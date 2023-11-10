@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:my_pos/enums/py_pos_print_response.dart';
 import 'package:my_pos/models/my_pos_paper.dart';
 
 import 'enums/my_pos_currency_enum.dart';
@@ -107,12 +108,22 @@ class MethodChannelMyPos extends MyPosPlatform {
   }
 
   @override
-  Future<String?> printPaper(MyPosPaper data) async {
+  Future<PrintResponse> printPaper(MyPosPaper data) async {
     final Map<String, dynamic> args = {
       'data': data.commands
     };
     final res = await methodChannel.invokeMethod<String>('printPaper', args);
-    return res;
+    switch (res) {
+      case 'SUCCESS':
+        return PrintResponse.success;
+      case 'FAILED':
+        return PrintResponse.failed;
+      case 'OUT_OF_PAPER':
+        return PrintResponse.outOfPaper;
+      case 'UNKNOWN':
+        return PrintResponse.unknown;
+    }
+    return PrintResponse.unknown;
   }
 
 

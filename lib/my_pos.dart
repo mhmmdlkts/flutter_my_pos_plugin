@@ -1,6 +1,7 @@
 import 'package:my_pos/enums/my_pos_currency_enum.dart';
 
 import 'enums/py_pos_payment_response.dart';
+import 'enums/py_pos_print_response.dart';
 import 'enums/sam_slot_enum.dart';
 import 'models/my_pos_paper.dart';
 import 'my_pos_platform_interface.dart';
@@ -49,7 +50,7 @@ class MyPos {
     return MyPosPlatform.instance.doSignatureWithoutSelection(data, samSlot, pin, timeoutMs);
   }
 
-  static Future printPaper(MyPosPaper data) async {
+  static Future<PrintResponse> printPaper(MyPosPaper data) async {
     return MyPosPlatform.instance.printPaper(data);
   }
 }

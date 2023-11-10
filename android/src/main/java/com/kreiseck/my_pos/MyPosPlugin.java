@@ -26,7 +26,10 @@ import com.mypos.smartsdk.MyPOSUtil;
 import com.mypos.smartsdk.ReferenceType;
 import com.mypos.smartsdk.TransactionProcessingResult;
 import com.mypos.smartsdk.SAMCard;
+import com.mypos.smartsdk.print.PrinterStatus;
 import android.content.Context;
+import android.content.BroadcastReceiver;
+import android.content.IntentFilter;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -46,11 +49,37 @@ public class MyPosPlugin implements FlutterPlugin, MethodCallHandler, ActivityAw
   private Activity activity;
   private Result pendingResult;
 
+
   @Override
   public void onAttachedToEngine(@NonNull FlutterPluginBinding flutterPluginBinding) {
     channel = new MethodChannel(flutterPluginBinding.getBinaryMessenger(), "my_pos");
     channel.setMethodCallHandler(this);
   }
+
+  private BroadcastReceiver myReceiver = new BroadcastReceiver() {
+
+    @Override
+    public void onReceive(Context context, Intent intent) {
+      boolean printing_started = intent.getBooleanExtra("printing_started", false);
+      int printer_status = intent.getIntExtra("printer_status", PrinterStatus.PRINTER_STATUS_UNKNOWN_ERROR);
+
+      // If the printing has actually started, handle the status
+      if (printing_started) {
+
+        // Handle success and errors
+        if (printer_status == PrinterStatus.PRINTER_STATUS_SUCCESS) {
+          pendingResult.success("SUCCESS");
+        } else if (printer_status == PrinterStatus.PRINTER_STATUS_OUT_OF_PAPER) {
+          pendingResult.success("OUT_OF_PAPER");
+        } else {
+          pendingResult.success("FAILED");
+        }
+        // etc.
+      } else {
+        pendingResult.success("FAILED");
+      }
+    }
+  };
 
   @Override
   public boolean onActivityResult(int requestCode, int resultCode, Intent data) {
@@ -129,6 +158,7 @@ public class MyPosPlugin implements FlutterPlugin, MethodCallHandler, ActivityAw
       int timeoutMs = call.argument("timeoutMs");
       doSignatureWithoutSelection(data, samSlot, pin, timeoutMs, result);
     } else if (call.method.equals("printPaper")) {
+      pendingResult = result;
       List<Map<String, Object>> data = call.argument("data");
       MyPosPrinterService.printPaper(activity, data);
     } else {
@@ -323,6 +353,8 @@ public class MyPosPlugin implements FlutterPlugin, MethodCallHandler, ActivityAw
   public void onAttachedToActivity(@NonNull ActivityPluginBinding binding) {
     activity = binding.getActivity();
     binding.addActivityResultListener(this);
+    IntentFilter filter = new IntentFilter("com.mypos.broadcast.PRINTING_DONE");
+    this.activity.registerReceiver(myReceiver, filter);
   }
 
 
@@ -338,6 +370,7 @@ public class MyPosPlugin implements FlutterPlugin, MethodCallHandler, ActivityAw
 
   @Override
   public void onDetachedFromActivity() {
+    this.activity.unregisterReceiver(myReceiver);
     activity = null;
   }
 }

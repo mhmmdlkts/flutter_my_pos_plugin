@@ -53,7 +53,8 @@ public class MyPosPrinterService {
                     commands.add(new PrinterCommand(PrinterCommand.CommandType.IMAGE, bitmapImg));
                     break;
                 case "qrCode":
-                    Bitmap bitmapQr = QRCodeGenerator.generateQRCode((String) commandData.get("value"));
+                    int qrSize = (int) commandData.get("size");
+                    Bitmap bitmapQr = QRCodeGenerator.generateQRCode((String) commandData.get("value"), qrSize);
                     if (bitmapQr != null) {
                         commands.add(new PrinterCommand(PrinterCommand.CommandType.IMAGE, bitmapQr));
                     }

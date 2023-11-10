@@ -25,7 +25,7 @@ public class MyPosPaymentService {
         });
     }
 
-    public static boolean startPayment(
+    public static void startPayment(
             @NonNull Activity context,
             @NonNull double amount,
             @NonNull String currency,
@@ -70,11 +70,9 @@ public class MyPosPaymentService {
 
 
             MyPOSAPI.openPaymentActivity(context, payment, 1);
-            return true;
         } catch (Exception e) {
             e.printStackTrace();
             showToast(context, "Error: " + e.getMessage());
-            return false;
         }
     }
 

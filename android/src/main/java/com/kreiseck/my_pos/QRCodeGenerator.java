@@ -8,12 +8,10 @@ import com.google.zxing.common.BitMatrix;
 
 public class QRCodeGenerator {
 
-    private static final int QR_CODE_WIDTH = 200;
-
-    public static Bitmap generateQRCode(String value) {
+    public static Bitmap generateQRCode(String value, int qrCodeWidth) {
         try {
             MultiFormatWriter writer = new MultiFormatWriter();
-            BitMatrix matrix = writer.encode(value, BarcodeFormat.QR_CODE, QR_CODE_WIDTH, QR_CODE_WIDTH);
+            BitMatrix matrix = writer.encode(value, BarcodeFormat.QR_CODE, qrCodeWidth, qrCodeWidth);
 
             int width = matrix.getWidth();
             int height = matrix.getHeight();

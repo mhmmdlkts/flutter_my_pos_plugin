@@ -2,6 +2,7 @@ import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 
 import 'enums/my_pos_currency_enum.dart';
 import 'enums/py_pos_payment_response.dart';
+import 'enums/py_pos_print_response.dart';
 import 'enums/sam_slot_enum.dart';
 import 'models/my_pos_paper.dart';
 import 'my_pos_method_channel.dart';
@@ -60,7 +61,7 @@ abstract class MyPosPlatform extends PlatformInterface {
     throw UnimplementedError('getCIN(SamSlot samSlot) has not been implemented.');
   }
 
-  Future<String?> printPaper(MyPosPaper data) {
+  Future<PrintResponse> printPaper(MyPosPaper data) {
     throw UnimplementedError('printPaper(PrinterData data) has not been implemented.');
   }
 }
