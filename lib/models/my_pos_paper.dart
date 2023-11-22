@@ -86,7 +86,7 @@ class MyPosPaper {
           } else if (element['alignment'] == PrinterAlignment.left.index) {
             padLeft = 0;
           } else if (element['alignment'] == PrinterAlignment.right.index) {
-            padLeft = paperSize;
+            padLeft = paperSize - element['value'].toString().length;
           }
           line += (' '*padLeft) + element['value'];
           break;
