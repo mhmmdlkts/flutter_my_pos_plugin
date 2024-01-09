@@ -94,12 +94,17 @@ class MyPosPaper {
           line += '${element['leftValue']} ${element['rightValue'].toString().padLeft((paperSize-1)-element['leftValue'].toString().length)}';
           break;
         case 'image':
+          if (element['value'] == cutLineImage) {
+            line += '${'-' * (paperSize-3)} >8';
+            break;
+          }
           line += '${(' '*((paperSize - 7)~/2))}(Image)';
           break;
         case 'qrCode':
           line += '${' '*((paperSize - 4)~/2)}(QR)';
           break;
         case 'space':
+          line += ' ' * paperSize;
           break;
       }
       line = '| $line${' ' * ((paperSize) - line.length)} |';

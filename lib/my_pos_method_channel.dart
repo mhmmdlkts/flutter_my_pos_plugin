@@ -22,7 +22,7 @@ class MethodChannelMyPos extends MyPosPlatform {
     bool printCustomerReceipt = true,
     bool fixedPinPad = false,
     bool giftCardTransaction = false,
-    String? eReceiptReceiverEmail,
+    String? eReceiptReceiver,
     String? reference,
   }) async {
     final Map<String, dynamic> args = {
@@ -32,7 +32,7 @@ class MethodChannelMyPos extends MyPosPlatform {
       'printCustomerReceipt': printCustomerReceipt,
       'fixedPinpad': fixedPinPad,
       'giftCardTransaction': giftCardTransaction,
-      'eReceiptReceiverEmail': eReceiptReceiverEmail,
+      'eReceiptReceiver': eReceiptReceiver,
       'reference': reference,
     };
     final res = await methodChannel.invokeMethod<String>('makePayment', args);
@@ -45,8 +45,43 @@ class MethodChannelMyPos extends MyPosPlatform {
         return PaymentResponse.error;
       case 'TIMEOUT':
         return PaymentResponse.timeout;
-      case 'FAILED':
-        return PaymentResponse.failed;
+      case 'DECLINED':
+        return PaymentResponse.declined;
+      case 'UNKNOWN':
+        return PaymentResponse.unknown;
+    }
+    return PaymentResponse.unknown;
+  }
+
+  @override
+  Future<PaymentResponse> makeGlassPayment({
+    required double amount,
+    required MyPosCurrency currency,
+    bool printMerchantReceipt = true,
+    bool printCustomerReceipt = true,
+    String? eReceiptReceiver,
+    String? reference,
+  }) async {
+    final Map<String, dynamic> args = {
+      'amount': amount,
+      'currency': currency.name,
+      'printMerchantReceipt': printMerchantReceipt,
+      'printCustomerReceipt': printCustomerReceipt,
+      'eReceiptReceiver': eReceiptReceiver,
+      'reference': reference,
+    };
+    final res = await methodChannel.invokeMethod<String>('makeGlassPayment', args);
+    switch (res) {
+      case 'SUCCESS':
+        return PaymentResponse.success;
+      case 'CANCEL':
+        return PaymentResponse.cancel;
+      case 'ERROR':
+        return PaymentResponse.error;
+      case 'TIMEOUT':
+        return PaymentResponse.timeout;
+      case 'DECLINED':
+        return PaymentResponse.declined;
       case 'UNKNOWN':
         return PaymentResponse.unknown;
     }

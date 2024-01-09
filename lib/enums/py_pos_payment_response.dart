@@ -1,6 +1,6 @@
 enum PaymentResponse {
   success,
-  failed,
+  declined,
   cancel,
   error,
   timeout,

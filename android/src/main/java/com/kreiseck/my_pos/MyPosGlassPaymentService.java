@@ -1,19 +1,19 @@
 package com.kreiseck.my_pos;
 
 import android.app.Activity;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 
-import com.mypos.smartsdk.Currency;
-import com.mypos.smartsdk.MyPOSAPI;
-import com.mypos.smartsdk.MyPOSPayment;
-import com.mypos.smartsdk.MyPOSUtil;
-import com.mypos.smartsdk.ReferenceType;
+import com.mypos.glasssdk.Currency;
+import com.mypos.glasssdk.MyPOSAPI;
+import com.mypos.glasssdk.MyPOSPayment;
+import com.mypos.glasssdk.MyPOSUtil;
+import com.mypos.glasssdk.ReferenceType;
 
 import java.util.UUID;
-import android.widget.Toast;
 
-public class MyPosPaymentService {
+public class MyPosGlassPaymentService {
 
 
     public static void showToast(Activity context, final String toast) {
@@ -31,20 +31,14 @@ public class MyPosPaymentService {
             @NonNull String currency,
             String reference,
             String eReceiptReceiver,
-            boolean giftCardTransaction,
-            boolean fixedPinPad,
             boolean printCustomerReceipt,
             boolean printMerchantReceipt
     ) {
-
         try {
             MyPOSPayment payment = MyPOSPayment.builder()
                     .productAmount(amount)
                     .currency(getCurrency(currency))
                     .foreignTransactionId(UUID.randomUUID().toString())
-
-                    .fixedPinpad(fixedPinPad)
-                    .giftCardTransaction(giftCardTransaction)
                     .build();
 
             if (reference != null && !reference.isEmpty()) {
@@ -72,7 +66,6 @@ public class MyPosPaymentService {
             MyPOSAPI.openPaymentActivity(context, payment, 1);
         } catch (Exception e) {
             e.printStackTrace();
-            showToast(context, "Error: " + e.getMessage());
         }
     }
 

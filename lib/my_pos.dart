@@ -15,7 +15,7 @@ class MyPos {
     bool printCustomerReceipt = true,
     bool fixedPinPad = false,
     bool giftCardTransaction = false,
-    String? eReceiptReceiverEmail,
+    String? eReceiptReceiver,
     String? reference
   }) async {
     return MyPosPlatform.instance.makePayment(
@@ -25,7 +25,25 @@ class MyPos {
       printCustomerReceipt: printCustomerReceipt,
       fixedPinPad: fixedPinPad,
       giftCardTransaction: giftCardTransaction,
-      eReceiptReceiverEmail: eReceiptReceiverEmail,
+      eReceiptReceiver: eReceiptReceiver,
+      reference: reference
+    );
+  }
+
+  static Future<PaymentResponse> makeGlassPayment({
+    required double amount,
+    required MyPosCurrency currency,
+    bool printMerchantReceipt = true,
+    bool printCustomerReceipt = true,
+    String? eReceiptReceiver,
+    String? reference
+  }) async {
+    return MyPosPlatform.instance.makeGlassPayment(
+      amount: amount,
+      currency: currency,
+      printMerchantReceipt: printMerchantReceipt,
+      printCustomerReceipt: printCustomerReceipt,
+      eReceiptReceiver: eReceiptReceiver,
       reference: reference
     );
   }

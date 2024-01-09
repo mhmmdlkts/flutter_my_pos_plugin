@@ -13,6 +13,7 @@ import io.flutter.plugin.common.MethodChannel.MethodCallHandler;
 import io.flutter.plugin.common.MethodChannel.Result;
 import java.util.Map;
 
+import io.flutter.embedding.engine.plugins.activity.ActivityAware;
 import android.content.Intent;
 import android.widget.Toast;
 import android.app.Activity;
@@ -83,6 +84,7 @@ public class MyPosPlugin implements FlutterPlugin, MethodCallHandler, ActivityAw
 
   @Override
   public boolean onActivityResult(int requestCode, int resultCode, Intent data) {
+
     if (requestCode == 1) {
 
       if (resultCode == Activity.RESULT_OK) {
@@ -96,11 +98,22 @@ public class MyPosPlugin implements FlutterPlugin, MethodCallHandler, ActivityAw
         }
         int transactionResult = data.getIntExtra("status", TransactionProcessingResult.TRANSACTION_FAILED);
         if (transactionResult == TransactionProcessingResult.TRANSACTION_SUCCESS) {
-          if (pendingResult != null) {
-            pendingResult.success("SUCCESS");
-            pendingResult = null;
+
+          boolean transaction_approved = data.getBooleanExtra("transaction_approved", false);
+
+          if (transaction_approved) {
+            if (pendingResult != null) {
+              pendingResult.success("SUCCESS");
+              pendingResult = null;
+            }
+            return true;
+          } else {
+            if (pendingResult != null) {
+              pendingResult.success("DECLINED");
+              pendingResult = null;
+            }
+            return false;
           }
-          return true;
         }
       } else {
         if (pendingResult != null) {
@@ -122,15 +135,27 @@ public class MyPosPlugin implements FlutterPlugin, MethodCallHandler, ActivityAw
     if (call.method.equals("makePayment")) {
       pendingResult = result;
       MyPosPaymentService.startPayment(
-        activity,
-        call.argument("amount"),
-        call.argument("currency"),
-        call.argument("reference"),
-        call.argument("eReceiptReceiverEmail"),
-        call.argument("giftCardTransaction"),
-        call.argument("fixedPinpad"),
-        call.argument("printCustomerReceipt"),
-        call.argument("printMerchantReceipt")
+              activity,
+              call.argument("amount"),
+              call.argument("currency"),
+              call.argument("reference"),
+              call.argument("eReceiptReceiver"),
+              call.argument("giftCardTransaction"),
+              call.argument("fixedPinpad"),
+              call.argument("printCustomerReceipt"),
+              call.argument("printMerchantReceipt")
+      );
+      // makePayment(result);
+    } else if (call.method.equals("makeGlassPayment")) {
+      pendingResult = result;
+      MyPosGlassPaymentService.startPayment(
+            activity,
+            call.argument("amount"),
+            call.argument("currency"),
+            call.argument("reference"),
+            call.argument("eReceiptReceiver"),
+            call.argument("printCustomerReceipt"),
+            call.argument("printMerchantReceipt")
       );
       // makePayment(result);
     } else if (call.method.equals("getCertificateSerialHex")) {
@@ -302,14 +327,6 @@ public class MyPosPlugin implements FlutterPlugin, MethodCallHandler, ActivityAw
     r.start();
   }
 
-  public static String byteArrayToHexString(byte[] bytes) {
-    StringBuilder sb = new StringBuilder();
-    for (byte b : bytes) {
-      sb.append(String.format("%02X", b));
-    }
-    return sb.toString();
-  }
-
   public void showToast(final String toast) {
     activity.runOnUiThread(new Runnable() {
       public void run()
@@ -317,36 +334,6 @@ public class MyPosPlugin implements FlutterPlugin, MethodCallHandler, ActivityAw
         Toast.makeText(activity, toast, Toast.LENGTH_SHORT).show();
       }
     });
-  }
-
-  private void makePayment(Result result) {
-    if(activity == null) {
-      result.error("ACTIVITY_NULL", "Activity is null. Cannot proceed with payment.", null);
-      return;
-    }
-    // Build the payment call
-    MyPOSPayment payment = MyPOSPayment.builder()
-            // Mandatory parameters
-            .productAmount(13.37)
-            .currency(Currency.EUR)
-            // Foreign transaction ID. Maximum length: 128 characters
-            .foreignTransactionId("test_transaction_id")
-            // Optional parameters
-            // Enable tipping mode
-            // .tippingModeEnabled(true)
-            // Operator code. Maximum length: 4 characters
-            .operatorCode("1234")
-            // Reference number. Maximum length: 50 alpha numeric characters
-            .reference("asd123asd", ReferenceType.REFERENCE_NUMBER)
-            // Set print receipt mode
-            .printMerchantReceipt(MyPOSUtil.RECEIPT_E_RECEIPT)
-            .printCustomerReceipt(MyPOSUtil.RECEIPT_OFF)
-            //.eReceiptReceiver("mhmmdlkts@gmail.com")
-            .build();
-
-
-// Start the transaction
-    MyPOSAPI.openPaymentActivity(activity, payment, 1);
   }
 
   @Override

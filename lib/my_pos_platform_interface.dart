@@ -35,7 +35,18 @@ abstract class MyPosPlatform extends PlatformInterface {
     bool printCustomerReceipt = true,
     bool fixedPinPad = false,
     bool giftCardTransaction = false,
-    String? eReceiptReceiverEmail,
+    String? eReceiptReceiver,
+    String? reference,
+  }) {
+    throw UnimplementedError('makePayment(paymentInfo) has not been implemented.');
+  }
+
+  Future<PaymentResponse> makeGlassPayment({
+    required double amount,
+    required MyPosCurrency currency,
+    bool printMerchantReceipt = true,
+    bool printCustomerReceipt = true,
+    String? eReceiptReceiver,
     String? reference,
   }) {
     throw UnimplementedError('makePayment(paymentInfo) has not been implemented.');

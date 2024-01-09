@@ -3,5 +3,7 @@
 
     <queries>
         <package android:name="com.mypos" />
+        <package android:name="com.mypos.top" />
     </queries>
+
 </manifest>
