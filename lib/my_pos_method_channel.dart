@@ -1,11 +1,12 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
-import 'package:my_pos/enums/py_pos_print_response.dart';
+import 'package:my_pos/enums/my_pos_print_response.dart';
 import 'package:my_pos/models/my_pos_paper.dart';
 
 import 'enums/my_pos_currency_enum.dart';
-import 'enums/py_pos_payment_response.dart';
+import 'enums/my_pos_payment_response_status.dart';
 import 'enums/sam_slot_enum.dart';
+import 'models/my_pos_payment_response.dart';
 import 'my_pos_platform_interface.dart';
 
 /// An implementation of [MyPosPlatform] that uses method channels.
@@ -15,7 +16,7 @@ class MethodChannelMyPos extends MyPosPlatform {
   final methodChannel = const MethodChannel('my_pos');
 
   @override
-  Future<PaymentResponse> makePayment({
+  Future<MyPosPaymentResponse> makePayment({
     required double amount,
     required MyPosCurrency currency,
     bool printMerchantReceipt = true,
@@ -35,26 +36,18 @@ class MethodChannelMyPos extends MyPosPlatform {
       'eReceiptReceiver': eReceiptReceiver,
       'reference': reference,
     };
-    final res = await methodChannel.invokeMethod<String>('makePayment', args);
-    switch (res) {
-      case 'SUCCESS':
-        return PaymentResponse.success;
-      case 'CANCEL':
-        return PaymentResponse.cancel;
-      case 'ERROR':
-        return PaymentResponse.error;
-      case 'TIMEOUT':
-        return PaymentResponse.timeout;
-      case 'DECLINED':
-        return PaymentResponse.declined;
-      case 'UNKNOWN':
-        return PaymentResponse.unknown;
+    final res = await methodChannel.invokeMethod('makePayment', args);
+
+    try {
+      return MyPosPaymentResponse.fromMap(Map<String, dynamic>.from(res));
+    } catch (e) {
+      print('Error parsing makePayment response: $e');
+      return const MyPosPaymentResponse(status_text: 'UNKNOWN');
     }
-    return PaymentResponse.unknown;
   }
 
   @override
-  Future<PaymentResponse> makeGlassPayment({
+  Future<PaymentResponseStatus> makeGlassPayment({
     required double amount,
     required MyPosCurrency currency,
     bool printMerchantReceipt = true,
@@ -70,22 +63,32 @@ class MethodChannelMyPos extends MyPosPlatform {
       'eReceiptReceiver': eReceiptReceiver,
       'reference': reference,
     };
-    final res = await methodChannel.invokeMethod<String>('makeGlassPayment', args);
-    switch (res) {
-      case 'SUCCESS':
-        return PaymentResponse.success;
-      case 'CANCEL':
-        return PaymentResponse.cancel;
-      case 'ERROR':
-        return PaymentResponse.error;
-      case 'TIMEOUT':
-        return PaymentResponse.timeout;
-      case 'DECLINED':
-        return PaymentResponse.declined;
-      case 'UNKNOWN':
-        return PaymentResponse.unknown;
+    final res = await methodChannel.invokeMethod('makeGlassPayment', args);
+    if (res is Map) {
+      final map = Map<String, dynamic>.from(res as Map);
+      final approved = map['transaction_approved'] == true;
+      if (approved) return PaymentResponseStatus.success;
+      // If we have response_code we can treat as declined; otherwise unknown
+      if (map.containsKey('response_code')) return PaymentResponseStatus.declined;
+      return PaymentResponseStatus.unknown;
     }
-    return PaymentResponse.unknown;
+    if (res is String) {
+      switch (res) {
+        case 'SUCCESS':
+          return PaymentResponseStatus.success;
+        case 'CANCEL':
+          return PaymentResponseStatus.cancel;
+        case 'ERROR':
+          return PaymentResponseStatus.error;
+        case 'TIMEOUT':
+          return PaymentResponseStatus.timeout;
+        case 'DECLINED':
+          return PaymentResponseStatus.declined;
+        case 'UNKNOWN':
+          return PaymentResponseStatus.unknown;
+      }
+    }
+    return PaymentResponseStatus.unknown;
   }
 
   @override

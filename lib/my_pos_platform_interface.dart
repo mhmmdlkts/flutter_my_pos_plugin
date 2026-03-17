@@ -1,8 +1,9 @@
+import 'package:my_pos/models/my_pos_payment_response.dart';
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 
 import 'enums/my_pos_currency_enum.dart';
-import 'enums/py_pos_payment_response.dart';
-import 'enums/py_pos_print_response.dart';
+import 'enums/my_pos_payment_response_status.dart';
+import 'enums/my_pos_print_response.dart';
 import 'enums/sam_slot_enum.dart';
 import 'models/my_pos_paper.dart';
 import 'my_pos_method_channel.dart';
@@ -28,7 +29,7 @@ abstract class MyPosPlatform extends PlatformInterface {
     _instance = instance;
   }
 
-  Future<PaymentResponse> makePayment({
+  Future<MyPosPaymentResponse> makePayment({
     required double amount,
     required MyPosCurrency currency,
     bool printMerchantReceipt = true,
@@ -41,7 +42,7 @@ abstract class MyPosPlatform extends PlatformInterface {
     throw UnimplementedError('makePayment(paymentInfo) has not been implemented.');
   }
 
-  Future<PaymentResponse> makeGlassPayment({
+  Future<PaymentResponseStatus> makeGlassPayment({
     required double amount,
     required MyPosCurrency currency,
     bool printMerchantReceipt = true,

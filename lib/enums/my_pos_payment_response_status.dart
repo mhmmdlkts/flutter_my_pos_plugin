@@ -1,4 +1,4 @@
-enum PaymentResponse {
+enum PaymentResponseStatus {
   success,
   declined,
   cancel,

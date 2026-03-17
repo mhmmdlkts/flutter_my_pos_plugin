@@ -2,7 +2,7 @@ import 'dart:convert';
 
 import 'package:my_pos/my_pos.dart';
 
-import '../enums/py_pos_print_response.dart';
+import '../enums/my_pos_print_response.dart';
 
 
 enum PrinterAlignment {

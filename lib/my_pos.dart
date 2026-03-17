@@ -1,14 +1,15 @@
-import 'package:my_pos/enums/my_pos_currency_enum.dart';
+import 'package:my_pos/enums/my_pos_currency_enum.dart' ;
 
-import 'enums/py_pos_payment_response.dart';
-import 'enums/py_pos_print_response.dart';
+import 'enums/my_pos_payment_response_status.dart';
+import 'enums/my_pos_print_response.dart';
 import 'enums/sam_slot_enum.dart';
 import 'models/my_pos_paper.dart';
+import 'models/my_pos_payment_response.dart';
 import 'my_pos_platform_interface.dart';
 
 class MyPos {
 
-  static Future<PaymentResponse> makePayment({
+  static Future<MyPosPaymentResponse> makePayment({
     required double amount,
     required MyPosCurrency currency,
     bool printMerchantReceipt = true,
@@ -30,7 +31,7 @@ class MyPos {
     );
   }
 
-  static Future<PaymentResponse> makeGlassPayment({
+  static Future<PaymentResponseStatus> makeGlassPayment({
     required double amount,
     required MyPosCurrency currency,
     bool printMerchantReceipt = true,

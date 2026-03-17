@@ -38,6 +38,8 @@ import java.util.Base64;
 import java.util.UUID;
 import java.util.Map;
 import java.util.List;
+import android.os.Bundle;
+import java.util.HashMap;
 
 /** MyPosPlugin */
 public class MyPosPlugin implements FlutterPlugin, MethodCallHandler, ActivityAware, PluginRegistry.ActivityResultListener {
@@ -84,37 +86,42 @@ public class MyPosPlugin implements FlutterPlugin, MethodCallHandler, ActivityAw
 
   @Override
   public boolean onActivityResult(int requestCode, int resultCode, Intent data) {
-
     if (requestCode == 1) {
-
       if (resultCode == Activity.RESULT_OK) {
         if (data == null) {
-
           if (pendingResult != null) {
             pendingResult.success("CANCEL");
             pendingResult = null;
           }
           return false;
         }
-        int transactionResult = data.getIntExtra("status", TransactionProcessingResult.TRANSACTION_FAILED);
-        if (transactionResult == TransactionProcessingResult.TRANSACTION_SUCCESS) {
 
-          boolean transaction_approved = data.getBooleanExtra("transaction_approved", false);
-
-          if (transaction_approved) {
-            if (pendingResult != null) {
-              pendingResult.success("SUCCESS");
-              pendingResult = null;
+        Bundle extras = data.getExtras();
+        HashMap<String, Object> resp = new HashMap<>();
+        if (extras != null) {
+          for (String key : extras.keySet()) {
+            Object value = extras.get(key);
+            // Bundle kann z. B. Parcelable enthalten -> vorsichtig sein
+            if (value != null &&
+                    (value instanceof String ||
+                            value instanceof Boolean ||
+                            value instanceof Integer ||
+                            value instanceof Long ||
+                            value instanceof Double ||
+                            value instanceof Float)) {
+              resp.put(key, value);
+            } else if (value != null) {
+              // Fallback: toString()
+              resp.put(key, value.toString());
             }
-            return true;
-          } else {
-            if (pendingResult != null) {
-              pendingResult.success("DECLINED");
-              pendingResult = null;
-            }
-            return false;
           }
         }
+
+        if (pendingResult != null) {
+          pendingResult.success(resp);
+          pendingResult = null;
+        }
+        return true;
       } else {
         if (pendingResult != null) {
           pendingResult.success("CANCEL");
@@ -122,10 +129,6 @@ public class MyPosPlugin implements FlutterPlugin, MethodCallHandler, ActivityAw
         }
         return false;
       }
-    }
-    if (pendingResult != null) {
-      pendingResult.success("CANCEL");
-      pendingResult = null;
     }
     return false;
   }
