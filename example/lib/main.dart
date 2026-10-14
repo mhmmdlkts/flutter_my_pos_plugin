@@ -54,19 +54,31 @@ class _ExamplePageState extends State<ExamplePage> {
       reference: 'EXAMPLE-1',
     );
     if (res.isCancelled) return 'Payment cancelled.';
-    if (!res.isApproved) return 'Declined (response code ${res.response_code}).';
+    if (res.isUnknown) {
+      return 'Result unknown: check the terminal before charging again.';
+    }
+    if (!res.isApproved) {
+      return 'Declined (response code ${res.response_code}).';
+    }
     return 'Approved, reference ${res.reference_number}, STAN ${res.STAN}.';
   }
 
   Future<String> _print() async {
     final paper = MyPosPaper()
-      ..addText('my_pos example', fontSize: 32, alignment: PrinterAlignment.center)
+      ..addText(
+        'my_pos example',
+        fontSize: 32,
+        alignment: PrinterAlignment.center,
+      )
       ..addSpace(1)
       ..addDoubleText('Taxi ride', 'EUR 1,00')
       ..addDoubleText('Total', 'EUR 1,00')
       ..addSpace(1)
       ..addQrCode('https://kasseneck.at')
-      ..addText('Cash register by Kasseneck', alignment: PrinterAlignment.center)
+      ..addText(
+        'Cash register by Kasseneck',
+        alignment: PrinterAlignment.center,
+      )
       ..addCutLine();
     final result = await paper.print();
     return 'Print: ${result.name}';

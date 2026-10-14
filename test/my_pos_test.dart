@@ -16,14 +16,16 @@ void main() {
 
   setUp(() {
     calls.clear();
-    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(channel, (call) async {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (call) async {
       calls.add(call);
       return answer(call);
     });
   });
 
   tearDown(() {
-    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(channel, null);
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, null);
   });
 
   group('makePayment', () {
@@ -58,7 +60,8 @@ void main() {
             'amount_dcc': 3,
             'status': '0',
           };
-      final res = await MyPos.makePayment(amount: 1, currency: MyPosCurrency.eur);
+      final res =
+          await MyPos.makePayment(amount: 1, currency: MyPosCurrency.eur);
       expect(res.isApproved, isTrue);
       expect(res.reference_number, '123456');
       expect(res.STAN, '42');
@@ -68,28 +71,32 @@ void main() {
 
     test('a declined payment is not approved', () async {
       answer = (_) => {'transaction_approved': false, 'response_code': '05'};
-      final res = await MyPos.makePayment(amount: 1, currency: MyPosCurrency.eur);
+      final res =
+          await MyPos.makePayment(amount: 1, currency: MyPosCurrency.eur);
       expect(res.isApproved, isFalse);
       expect(res.response_code, '05');
     });
 
     test('cancel comes back as a response, not as an error', () async {
       answer = (_) => 'CANCEL';
-      final res = await MyPos.makePayment(amount: 1, currency: MyPosCurrency.eur);
+      final res =
+          await MyPos.makePayment(amount: 1, currency: MyPosCurrency.eur);
       expect(res.isApproved, isFalse);
       expect(res.isCancelled, isTrue);
     });
 
     test('cancel on the terminal (status 1) is cancelled', () async {
       answer = (_) => {'transaction_approved': false, 'status': 1};
-      final res = await MyPos.makePayment(amount: 1, currency: MyPosCurrency.eur);
+      final res =
+          await MyPos.makePayment(amount: 1, currency: MyPosCurrency.eur);
       expect(res.isCancelled, isTrue);
       expect(res.isApproved, isFalse);
     });
 
     test('a lost result is unknown, not approved', () async {
       answer = (_) => 'UNKNOWN';
-      final res = await MyPos.makePayment(amount: 1, currency: MyPosCurrency.eur);
+      final res =
+          await MyPos.makePayment(amount: 1, currency: MyPosCurrency.eur);
       expect(res.isUnknown, isTrue);
       expect(res.isApproved, isFalse);
       expect(res.isCancelled, isFalse);
@@ -99,16 +106,21 @@ void main() {
       answer = (_) => throw PlatformException(code: 'PAYMENT_NOT_STARTED');
       expect(
         MyPos.makePayment(amount: 1, currency: MyPosCurrency.eur),
-        throwsA(isA<PlatformException>().having((e) => e.code, 'code', 'PAYMENT_NOT_STARTED')),
+        throwsA(isA<PlatformException>()
+            .having((e) => e.code, 'code', 'PAYMENT_NOT_STARTED')),
       );
     });
   });
 
   test('glass payment status', () {
-    expect(MethodChannelMyPos.glassStatusFrom({'transaction_approved': true}), PaymentResponseStatus.success);
-    expect(MethodChannelMyPos.glassStatusFrom({'response_code': '05'}), PaymentResponseStatus.declined);
-    expect(MethodChannelMyPos.glassStatusFrom('CANCEL'), PaymentResponseStatus.cancel);
-    expect(MethodChannelMyPos.glassStatusFrom(null), PaymentResponseStatus.unknown);
+    expect(MethodChannelMyPos.glassStatusFrom({'transaction_approved': true}),
+        PaymentResponseStatus.success);
+    expect(MethodChannelMyPos.glassStatusFrom({'response_code': '05'}),
+        PaymentResponseStatus.declined);
+    expect(MethodChannelMyPos.glassStatusFrom('CANCEL'),
+        PaymentResponseStatus.cancel);
+    expect(MethodChannelMyPos.glassStatusFrom(null),
+        PaymentResponseStatus.unknown);
   });
 
   group('printing', () {
@@ -121,30 +133,38 @@ void main() {
         ..addSpace(1);
       expect(await paper.print(), PrintResponse.outOfPaper);
       final commands = (calls.single.arguments as Map)['data'] as List;
-      expect(commands.map((c) => c['type']), ['text', 'doubleText', 'qrCode', 'space']);
+      expect(commands.map((c) => c['type']),
+          ['text', 'doubleText', 'qrCode', 'space']);
       expect(commands[0]['alignment'], 1);
       expect(commands[2]['size'], 200);
     });
 
     test('never throws', () async {
       answer = (_) => throw PlatformException(code: 'ALREADY_ACTIVE');
-      expect(await MyPos.printPaper(MyPosPaper()..addText('x')), PrintResponse.failed);
+      expect(await MyPos.printPaper(MyPosPaper()..addText('x')),
+          PrintResponse.failed);
     });
 
     test('never throws without the native plugin either', () async {
-      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(channel, null);
-      expect(await MyPos.printPaper(MyPosPaper()..addText('x')), PrintResponse.failed);
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, null);
+      expect(await MyPos.printPaper(MyPosPaper()..addText('x')),
+          PrintResponse.failed);
     });
 
     test('preview handles lines longer than the paper', () {
-      final paper = MyPosPaper()..addText('x' * 50, alignment: PrinterAlignment.right);
+      final paper = MyPosPaper()
+        ..addText('x' * 50, alignment: PrinterAlignment.right);
       expect(paper.toString(), contains('x' * 50));
     });
   });
 
   test('SAM calls pass slot and timeout', () async {
     answer = (_) => 'sig';
-    expect(await MyPos.doSignature('data', SamSlot.slot_2, '1234', timeoutMs: 500), 'sig');
-    expect(calls.single.arguments, {'samSlot': 2, 'timeoutMs': 500, 'data': 'data', 'pin': '1234'});
+    expect(
+        await MyPos.doSignature('data', SamSlot.slot_2, '1234', timeoutMs: 500),
+        'sig');
+    expect(calls.single.arguments,
+        {'samSlot': 2, 'timeoutMs': 500, 'data': 'data', 'pin': '1234'});
   });
 }

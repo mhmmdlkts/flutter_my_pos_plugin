@@ -63,12 +63,14 @@ class MyPos {
   }
 
   /// Serial number (hex) of the signature certificate on the SAM card.
-  static Future<String?> getCertificateSerialHex(SamSlot samSlot, {int timeoutMs = 1000}) {
+  static Future<String?> getCertificateSerialHex(SamSlot samSlot,
+      {int timeoutMs = 1000}) {
     return MyPosPlatform.instance.getCertificateSerialHex(samSlot, timeoutMs);
   }
 
   /// Serial number (decimal) of the signature certificate on the SAM card.
-  static Future<String?> getCertificateSerialDec(SamSlot samSlot, {int timeoutMs = 1000}) {
+  static Future<String?> getCertificateSerialDec(SamSlot samSlot,
+      {int timeoutMs = 1000}) {
     return MyPosPlatform.instance.getCertificateSerialDec(samSlot, timeoutMs);
   }
 
@@ -79,13 +81,17 @@ class MyPos {
 
   /// Signs the SHA-256 hash of [data] with the SAM card; returns the
   /// signature as Base64url without padding.
-  static Future<String?> doSignature(String data, SamSlot samSlot, String pin, {int timeoutMs = 1000}) {
+  static Future<String?> doSignature(String data, SamSlot samSlot, String pin,
+      {int timeoutMs = 1000}) {
     return MyPosPlatform.instance.doSignature(data, samSlot, pin, timeoutMs);
   }
 
   /// Like [doSignature], but skips selecting the signature application.
-  static Future<String?> doSignatureWithoutSelection(String data, SamSlot samSlot, String pin, {int timeoutMs = 1000}) {
-    return MyPosPlatform.instance.doSignatureWithoutSelection(data, samSlot, pin, timeoutMs);
+  static Future<String?> doSignatureWithoutSelection(
+      String data, SamSlot samSlot, String pin,
+      {int timeoutMs = 1000}) {
+    return MyPosPlatform.instance
+        .doSignatureWithoutSelection(data, samSlot, pin, timeoutMs);
   }
 
   /// Prints [data] on the built-in printer. Never throws; an image or QR code

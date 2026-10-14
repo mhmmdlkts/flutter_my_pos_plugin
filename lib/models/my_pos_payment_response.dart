@@ -4,33 +4,33 @@
 /// Result of [MyPos.makePayment], one field per key the terminal returns.
 class MyPosPaymentResponse {
   // --- Exact fields per myPOS "In Person Payments → Responses" ---
-  final String? reference_number;          // reference_number
-  final String? cardholder_name;           // cardholder_name
-  final String? date_time;                 // date_time (YYMMDDHHmmss)
-  final String? pan;                       // pan (masked)
-  final String? pan_hash;                  // pan_hash
-  final int? status;                       // status (TransactionProcessingResult)
-  final String? status_text;               // status_text
-  final String? card_brand;                // card_brand
-  final String? card_entry_mode;           // card_entry_mode (ENTRY_MODE_*)
-  final String? response_code;             // response_code
-  final String? authorization_code;        // authorization_code
-  final bool? signature_required;          // signature_required
-  final String? TSI;                       // TSI
-  final String? TVR;                       // TVR
-  final String? AID;                       // AID
-  final String? STAN;                      // STAN
-  final String? CVM;                       // CVM (P/S/N)
-  final String? application_name;          // application_name
-  final bool? transaction_approved;        // transaction_approved
-  final bool? dcc_available;               // dcc_available
-  final double? amount_dcc;                // amount_dcc
-  final String? currency_dcc;              // currency_dcc
-  final double? exchange_rate;             // exchange_rate
-  final String? TID;                       // TID
-  final bool? update_pending;              // update_pending
-  final String? resp_code;                 // resp_code (Payment Request)
-  final String? expire_date;               // expire_date (Payment Request)
+  final String? reference_number; // reference_number
+  final String? cardholder_name; // cardholder_name
+  final String? date_time; // date_time (YYMMDDHHmmss)
+  final String? pan; // pan (masked)
+  final String? pan_hash; // pan_hash
+  final int? status; // status (TransactionProcessingResult)
+  final String? status_text; // status_text
+  final String? card_brand; // card_brand
+  final String? card_entry_mode; // card_entry_mode (ENTRY_MODE_*)
+  final String? response_code; // response_code
+  final String? authorization_code; // authorization_code
+  final bool? signature_required; // signature_required
+  final String? TSI; // TSI
+  final String? TVR; // TVR
+  final String? AID; // AID
+  final String? STAN; // STAN
+  final String? CVM; // CVM (P/S/N)
+  final String? application_name; // application_name
+  final bool? transaction_approved; // transaction_approved
+  final bool? dcc_available; // dcc_available
+  final double? amount_dcc; // amount_dcc
+  final String? currency_dcc; // currency_dcc
+  final double? exchange_rate; // exchange_rate
+  final String? TID; // TID
+  final bool? update_pending; // update_pending
+  final String? resp_code; // resp_code (Payment Request)
+  final String? expire_date; // expire_date (Payment Request)
 
   const MyPosPaymentResponse({
     this.reference_number,
@@ -146,12 +146,14 @@ class MyPosPaymentResponse {
     if (v is int) return v;
     return int.tryParse(v.toString());
   }
+
   static double? _asDouble(dynamic v) {
     if (v == null) return null;
     if (v is double) return v;
     if (v is int) return v.toDouble();
     return double.tryParse(v.toString());
   }
+
   static bool? _asBool(dynamic v) {
     if (v == null) return null;
     if (v is bool) return v;

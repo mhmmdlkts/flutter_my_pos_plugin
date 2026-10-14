@@ -39,7 +39,8 @@ abstract class MyPosPlatform extends PlatformInterface {
     String? eReceiptReceiver,
     String? reference,
   }) {
-    throw UnimplementedError('makePayment(paymentInfo) has not been implemented.');
+    throw UnimplementedError(
+        'makePayment(paymentInfo) has not been implemented.');
   }
 
   Future<PaymentResponseStatus> makeGlassPayment({
@@ -50,30 +51,39 @@ abstract class MyPosPlatform extends PlatformInterface {
     String? eReceiptReceiver,
     String? reference,
   }) {
-    throw UnimplementedError('makePayment(paymentInfo) has not been implemented.');
+    throw UnimplementedError(
+        'makePayment(paymentInfo) has not been implemented.');
   }
 
-  Future<String?> doSignature(String data, SamSlot samSlot, String pin, int timeoutMs) {
-    throw UnimplementedError('doSignature(String data, SamSlot samSlot, String pin) has not been implemented.');
+  Future<String?> doSignature(
+      String data, SamSlot samSlot, String pin, int timeoutMs) {
+    throw UnimplementedError(
+        'doSignature(String data, SamSlot samSlot, String pin) has not been implemented.');
   }
 
-  Future<String?> doSignatureWithoutSelection(String data, SamSlot samSlot, String pin, int timeoutMs) {
-    throw UnimplementedError('doSignatureWithoutSelection(String data, SamSlot samSlot, String pin) has not been implemented.');
+  Future<String?> doSignatureWithoutSelection(
+      String data, SamSlot samSlot, String pin, int timeoutMs) {
+    throw UnimplementedError(
+        'doSignatureWithoutSelection(String data, SamSlot samSlot, String pin) has not been implemented.');
   }
 
   Future<String?> getCertificateSerialHex(SamSlot samSlot, int timeoutMs) {
-    throw UnimplementedError('getCertificateSerialHex(SamSlot samSlot) has not been implemented.');
+    throw UnimplementedError(
+        'getCertificateSerialHex(SamSlot samSlot) has not been implemented.');
   }
 
   Future<String?> getCertificateSerialDec(SamSlot samSlot, int timeoutMs) {
-    throw UnimplementedError('getCertificateSerialDec(SamSlot samSlot) has not been implemented.');
+    throw UnimplementedError(
+        'getCertificateSerialDec(SamSlot samSlot) has not been implemented.');
   }
 
   Future<String?> getCIN(SamSlot samSlot, int timeoutMs) {
-    throw UnimplementedError('getCIN(SamSlot samSlot) has not been implemented.');
+    throw UnimplementedError(
+        'getCIN(SamSlot samSlot) has not been implemented.');
   }
 
   Future<PrintResponse> printPaper(MyPosPaper data) {
-    throw UnimplementedError('printPaper(PrinterData data) has not been implemented.');
+    throw UnimplementedError(
+        'printPaper(PrinterData data) has not been implemented.');
   }
 }

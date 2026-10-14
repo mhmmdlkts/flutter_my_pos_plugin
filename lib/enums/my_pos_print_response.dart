@@ -1,6 +1,1 @@
-enum PrintResponse {
-  success,
-  failed,
-  outOfPaper,
-  unknown
-}
+enum PrintResponse { success, failed, outOfPaper, unknown }

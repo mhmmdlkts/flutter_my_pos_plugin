@@ -75,8 +75,12 @@ class MethodChannelMyPos extends MyPosPlatform {
   @visibleForTesting
   static PaymentResponseStatus glassStatusFrom(Object? res) {
     if (res is Map) {
-      if (res['transaction_approved'] == true) return PaymentResponseStatus.success;
-      if (res.containsKey('response_code')) return PaymentResponseStatus.declined;
+      if (res['transaction_approved'] == true) {
+        return PaymentResponseStatus.success;
+      }
+      if (res.containsKey('response_code')) {
+        return PaymentResponseStatus.declined;
+      }
       return PaymentResponseStatus.unknown;
     }
     return switch (res) {
@@ -91,21 +95,25 @@ class MethodChannelMyPos extends MyPosPlatform {
 
   @override
   Future<String?> getCertificateSerialHex(SamSlot samSlot, int timeoutMs) {
-    return methodChannel.invokeMethod<String>('getCertificateSerialHex', _sam(samSlot, timeoutMs));
+    return methodChannel.invokeMethod<String>(
+        'getCertificateSerialHex', _sam(samSlot, timeoutMs));
   }
 
   @override
   Future<String?> getCertificateSerialDec(SamSlot samSlot, int timeoutMs) {
-    return methodChannel.invokeMethod<String>('getCertificateSerialDec', _sam(samSlot, timeoutMs));
+    return methodChannel.invokeMethod<String>(
+        'getCertificateSerialDec', _sam(samSlot, timeoutMs));
   }
 
   @override
   Future<String?> getCIN(SamSlot samSlot, int timeoutMs) {
-    return methodChannel.invokeMethod<String>('getCIN', _sam(samSlot, timeoutMs));
+    return methodChannel.invokeMethod<String>(
+        'getCIN', _sam(samSlot, timeoutMs));
   }
 
   @override
-  Future<String?> doSignature(String data, SamSlot samSlot, String pin, int timeoutMs) {
+  Future<String?> doSignature(
+      String data, SamSlot samSlot, String pin, int timeoutMs) {
     return methodChannel.invokeMethod<String>('doSignature', {
       ..._sam(samSlot, timeoutMs),
       'data': data,
@@ -114,7 +122,8 @@ class MethodChannelMyPos extends MyPosPlatform {
   }
 
   @override
-  Future<String?> doSignatureWithoutSelection(String data, SamSlot samSlot, String pin, int timeoutMs) {
+  Future<String?> doSignatureWithoutSelection(
+      String data, SamSlot samSlot, String pin, int timeoutMs) {
     return methodChannel.invokeMethod<String>('doSignatureWithoutSelection', {
       ..._sam(samSlot, timeoutMs),
       'data': data,
@@ -132,7 +141,8 @@ class MethodChannelMyPos extends MyPosPlatform {
   @override
   Future<PrintResponse> printPaper(MyPosPaper data) async {
     try {
-      final res = await methodChannel.invokeMethod<String>('printPaper', {'data': data.commands});
+      final res = await methodChannel
+          .invokeMethod<String>('printPaper', {'data': data.commands});
       return printResponseFrom(res);
     } on PlatformException {
       return PrintResponse.failed;
