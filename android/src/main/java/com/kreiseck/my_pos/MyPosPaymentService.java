@@ -2,8 +2,6 @@ package com.kreiseck.my_pos;
 
 import android.app.Activity;
 
-import androidx.annotation.NonNull;
-
 import com.mypos.smartsdk.Currency;
 import com.mypos.smartsdk.MyPOSAPI;
 import com.mypos.smartsdk.MyPOSPayment;
@@ -11,100 +9,46 @@ import com.mypos.smartsdk.MyPOSUtil;
 import com.mypos.smartsdk.ReferenceType;
 
 import java.util.UUID;
-import android.widget.Toast;
 
-public class MyPosPaymentService {
+/** Card payment on myPOS Smart terminals (Go 2, Pro, Carbon, Ultra ...). */
+final class MyPosPaymentService {
 
+  private MyPosPaymentService() {}
 
-    public static void showToast(Activity context, final String toast) {
-        context.runOnUiThread(new Runnable() {
-            public void run()
-            {
-                Toast.makeText(context, toast, Toast.LENGTH_SHORT).show();
-            }
-        });
+  /** Opens the myPOS payment screen; throws when it cannot be opened. */
+  static void startPayment(Activity activity, PaymentArgs args, int requestCode) throws Exception {
+    MyPOSPayment payment = MyPOSPayment.builder()
+        .productAmount(args.amount)
+        .currency(currency(args.currency))
+        .foreignTransactionId(UUID.randomUUID().toString())
+        .fixedPinpad(args.fixedPinpad)
+        .giftCardTransaction(args.giftCardTransaction)
+        .build();
+
+    if (args.reference != null) {
+      payment.setReference(args.reference, ReferenceType.REFERENCE_NUMBER);
     }
-
-    public static void startPayment(
-            @NonNull Activity context,
-            @NonNull double amount,
-            @NonNull String currency,
-            String reference,
-            String eReceiptReceiver,
-            boolean giftCardTransaction,
-            boolean fixedPinPad,
-            boolean printCustomerReceipt,
-            boolean printMerchantReceipt
-    ) {
-
-        try {
-            MyPOSPayment payment = MyPOSPayment.builder()
-                    .productAmount(amount)
-                    .currency(getCurrency(currency))
-                    .foreignTransactionId(UUID.randomUUID().toString())
-
-                    .fixedPinpad(fixedPinPad)
-                    .giftCardTransaction(giftCardTransaction)
-                    .build();
-
-            if (reference != null && !reference.isEmpty()) {
-                payment.setReference(reference, ReferenceType.REFERENCE_NUMBER);
-            }
-
-            if (printCustomerReceipt) {
-                payment.setPrintCustomerReceipt(MyPOSUtil.RECEIPT_ON);
-            } else {
-                if (eReceiptReceiver != null && !eReceiptReceiver.isEmpty()) {
-                    payment.setEReceiptReceiver(eReceiptReceiver);
-                    payment.setPrintCustomerReceipt(MyPOSUtil.RECEIPT_E_RECEIPT);
-                } else {
-                    payment.setPrintCustomerReceipt(MyPOSUtil.RECEIPT_OFF);
-                }
-            }
-
-            if (printMerchantReceipt) {
-                payment.setPrintMerchantReceipt(MyPOSUtil.RECEIPT_ON);
-            } else {
-                payment.setPrintMerchantReceipt(MyPOSUtil.RECEIPT_OFF);
-            }
-
-
-            MyPOSAPI.openPaymentActivity(context, payment, 1);
-        } catch (Exception e) {
-            e.printStackTrace();
-            showToast(context, "Error: " + e.getMessage());
-        }
+    payment.setPrintCustomerReceipt(customerReceipt(args));
+    if (args.eReceiptReceiver != null && !args.printCustomerReceipt) {
+      payment.setEReceiptReceiver(args.eReceiptReceiver);
     }
+    payment.setPrintMerchantReceipt(args.printMerchantReceipt ? MyPOSUtil.RECEIPT_ON : MyPOSUtil.RECEIPT_OFF);
 
-    private static Currency getCurrency(String curCode) {
-        switch (curCode.toUpperCase()) {
-            case "EUR":
-                return Currency.EUR;
-            case "USD":
-                return Currency.USD;
-            case "GBP":
-                return Currency.GBP;
-            case "CHF":
-                return Currency.CHF;
-            case "BGN":
-                return Currency.BGN;
-            case "RON":
-                return Currency.RON;
-            case "HRK":
-                return Currency.HRK;
-            case "CZK":
-                return Currency.CZK;
-            case "DKK":
-                return Currency.DKK;
-            case "HUF":
-                return Currency.HUF;
-            case "NOK":
-                return Currency.NOK;
-            case "PLN":
-                return Currency.PLN;
-            case "SEK":
-                return Currency.SEK;
-        }
-        return Currency.EUR;
+    MyPOSAPI.openPaymentActivity(activity, payment, requestCode);
+  }
+
+  static int customerReceipt(PaymentArgs args) {
+    if (args.printCustomerReceipt) return MyPOSUtil.RECEIPT_ON;
+    if (args.eReceiptReceiver != null) return MyPOSUtil.RECEIPT_E_RECEIPT;
+    return MyPOSUtil.RECEIPT_OFF;
+  }
+
+  /** Maps the ISO code; an unknown code is an error, never a silent switch to EUR. */
+  static Currency currency(String code) {
+    try {
+      return Currency.valueOf(code);
+    } catch (IllegalArgumentException e) {
+      throw new IllegalArgumentException("Currency not supported by myPOS: " + code);
     }
+  }
 }

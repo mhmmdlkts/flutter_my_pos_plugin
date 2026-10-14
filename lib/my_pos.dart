@@ -1,5 +1,4 @@
-import 'package:my_pos/enums/my_pos_currency_enum.dart' ;
-
+import 'enums/my_pos_currency_enum.dart';
 import 'enums/my_pos_payment_response_status.dart';
 import 'enums/my_pos_print_response.dart';
 import 'enums/sam_slot_enum.dart';
@@ -7,8 +6,19 @@ import 'models/my_pos_paper.dart';
 import 'models/my_pos_payment_response.dart';
 import 'my_pos_platform_interface.dart';
 
+/// Card payments, receipt printing and the signature card on myPOS Android
+/// terminals.
+///
+/// All calls need the app to run on a myPOS device (or with the myPOS Glass
+/// app for [makeGlassPayment]). Only one payment and one print job can run at
+/// a time; a second call while one is running fails with `ALREADY_ACTIVE`.
 class MyPos {
-
+  /// Starts a card payment on a myPOS Smart terminal and waits for the result.
+  ///
+  /// Check [MyPosPaymentResponse.isApproved] before treating the sale as paid.
+  /// A cancelled payment returns `status_text: 'CANCEL'`. Throws a
+  /// `PlatformException` when the payment screen cannot be opened (no
+  /// activity, myPOS service missing, invalid amount or currency).
   static Future<MyPosPaymentResponse> makePayment({
     required double amount,
     required MyPosCurrency currency,
@@ -17,8 +27,8 @@ class MyPos {
     bool fixedPinPad = false,
     bool giftCardTransaction = false,
     String? eReceiptReceiver,
-    String? reference
-  }) async {
+    String? reference,
+  }) {
     return MyPosPlatform.instance.makePayment(
       amount: amount,
       currency: currency,
@@ -27,49 +37,57 @@ class MyPos {
       fixedPinPad: fixedPinPad,
       giftCardTransaction: giftCardTransaction,
       eReceiptReceiver: eReceiptReceiver,
-      reference: reference
+      reference: reference,
     );
   }
 
+  /// Starts a tap-to-pay payment through the myPOS Glass app.
   static Future<PaymentResponseStatus> makeGlassPayment({
     required double amount,
     required MyPosCurrency currency,
     bool printMerchantReceipt = true,
     bool printCustomerReceipt = true,
     String? eReceiptReceiver,
-    String? reference
-  }) async {
+    String? reference,
+  }) {
     return MyPosPlatform.instance.makeGlassPayment(
       amount: amount,
       currency: currency,
       printMerchantReceipt: printMerchantReceipt,
       printCustomerReceipt: printCustomerReceipt,
       eReceiptReceiver: eReceiptReceiver,
-      reference: reference
+      reference: reference,
     );
   }
 
-  static Future<String?> getCertificateSerialHex(SamSlot samSlot, {int timeoutMs = 1000}) async {
+  /// Serial number (hex) of the signature certificate on the SAM card.
+  static Future<String?> getCertificateSerialHex(SamSlot samSlot, {int timeoutMs = 1000}) {
     return MyPosPlatform.instance.getCertificateSerialHex(samSlot, timeoutMs);
   }
 
-  static Future<String?> getCertificateSerialDec(SamSlot samSlot, {int timeoutMs = 1000}) async {
+  /// Serial number (decimal) of the signature certificate on the SAM card.
+  static Future<String?> getCertificateSerialDec(SamSlot samSlot, {int timeoutMs = 1000}) {
     return MyPosPlatform.instance.getCertificateSerialDec(samSlot, timeoutMs);
   }
 
-  static Future<String?> getCIN(SamSlot samSlot, {int timeoutMs = 1000}) async {
+  /// Card identification number of the SAM card.
+  static Future<String?> getCIN(SamSlot samSlot, {int timeoutMs = 1000}) {
     return MyPosPlatform.instance.getCIN(samSlot, timeoutMs);
   }
 
-  static Future<String?> doSignature(String data, SamSlot samSlot, String pin, {int timeoutMs = 1000}) async {
+  /// Signs the SHA-256 hash of [data] with the SAM card; returns the
+  /// signature as Base64url without padding.
+  static Future<String?> doSignature(String data, SamSlot samSlot, String pin, {int timeoutMs = 1000}) {
     return MyPosPlatform.instance.doSignature(data, samSlot, pin, timeoutMs);
   }
 
-  static Future<String?> doSignatureWithoutSelection(String data, SamSlot samSlot, String pin, {int timeoutMs = 1000}) async {
+  /// Like [doSignature], but skips selecting the signature application.
+  static Future<String?> doSignatureWithoutSelection(String data, SamSlot samSlot, String pin, {int timeoutMs = 1000}) {
     return MyPosPlatform.instance.doSignatureWithoutSelection(data, samSlot, pin, timeoutMs);
   }
 
-  static Future<PrintResponse> printPaper(MyPosPaper data) async {
+  /// Prints [data] on the built-in printer. Never throws.
+  static Future<PrintResponse> printPaper(MyPosPaper data) {
     return MyPosPlatform.instance.printPaper(data);
   }
 }

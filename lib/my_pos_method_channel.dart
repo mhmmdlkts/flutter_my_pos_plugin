@@ -1,11 +1,11 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
-import 'package:my_pos/enums/my_pos_print_response.dart';
-import 'package:my_pos/models/my_pos_paper.dart';
 
 import 'enums/my_pos_currency_enum.dart';
 import 'enums/my_pos_payment_response_status.dart';
+import 'enums/my_pos_print_response.dart';
 import 'enums/sam_slot_enum.dart';
+import 'models/my_pos_paper.dart';
 import 'models/my_pos_payment_response.dart';
 import 'my_pos_platform_interface.dart';
 
@@ -26,7 +26,7 @@ class MethodChannelMyPos extends MyPosPlatform {
     String? eReceiptReceiver,
     String? reference,
   }) async {
-    final Map<String, dynamic> args = {
+    final res = await methodChannel.invokeMethod<Object?>('makePayment', {
       'amount': amount,
       'currency': currency.name,
       'printMerchantReceipt': printMerchantReceipt,
@@ -35,15 +35,21 @@ class MethodChannelMyPos extends MyPosPlatform {
       'giftCardTransaction': giftCardTransaction,
       'eReceiptReceiver': eReceiptReceiver,
       'reference': reference,
-    };
-    final res = await methodChannel.invokeMethod('makePayment', args);
+    });
+    return paymentResponseFrom(res);
+  }
 
-    try {
+  /// Turns the native answer into a response: the result extras of the
+  /// payment, or a status text ("CANCEL") when the terminal returned none.
+  @visibleForTesting
+  static MyPosPaymentResponse paymentResponseFrom(Object? res) {
+    if (res is Map) {
       return MyPosPaymentResponse.fromMap(Map<String, dynamic>.from(res));
-    } catch (e) {
-      print('Error parsing makePayment response: $e');
-      return const MyPosPaymentResponse(status_text: 'UNKNOWN');
     }
+    return MyPosPaymentResponse(
+      status_text: res is String ? res : 'UNKNOWN',
+      transaction_approved: false,
+    );
   }
 
   @override
@@ -55,122 +61,94 @@ class MethodChannelMyPos extends MyPosPlatform {
     String? eReceiptReceiver,
     String? reference,
   }) async {
-    final Map<String, dynamic> args = {
+    final res = await methodChannel.invokeMethod<Object?>('makeGlassPayment', {
       'amount': amount,
       'currency': currency.name,
       'printMerchantReceipt': printMerchantReceipt,
       'printCustomerReceipt': printCustomerReceipt,
       'eReceiptReceiver': eReceiptReceiver,
       'reference': reference,
-    };
-    final res = await methodChannel.invokeMethod('makeGlassPayment', args);
+    });
+    return glassStatusFrom(res);
+  }
+
+  @visibleForTesting
+  static PaymentResponseStatus glassStatusFrom(Object? res) {
     if (res is Map) {
-      final map = Map<String, dynamic>.from(res as Map);
-      final approved = map['transaction_approved'] == true;
-      if (approved) return PaymentResponseStatus.success;
-      // If we have response_code we can treat as declined; otherwise unknown
-      if (map.containsKey('response_code')) return PaymentResponseStatus.declined;
+      if (res['transaction_approved'] == true) return PaymentResponseStatus.success;
+      if (res.containsKey('response_code')) return PaymentResponseStatus.declined;
       return PaymentResponseStatus.unknown;
     }
-    if (res is String) {
-      switch (res) {
-        case 'SUCCESS':
-          return PaymentResponseStatus.success;
-        case 'CANCEL':
-          return PaymentResponseStatus.cancel;
-        case 'ERROR':
-          return PaymentResponseStatus.error;
-        case 'TIMEOUT':
-          return PaymentResponseStatus.timeout;
-        case 'DECLINED':
-          return PaymentResponseStatus.declined;
-        case 'UNKNOWN':
-          return PaymentResponseStatus.unknown;
-      }
-    }
-    return PaymentResponseStatus.unknown;
-  }
-
-  @override
-  Future<String?> getCertificateSerialHex(SamSlot samSlot, int timeoutMs) async {
-    final Map<String, dynamic> args = {
-      'samSlot': getSamSlot(samSlot),
-      'timeoutMs': timeoutMs,
+    return switch (res) {
+      'SUCCESS' => PaymentResponseStatus.success,
+      'CANCEL' => PaymentResponseStatus.cancel,
+      'ERROR' => PaymentResponseStatus.error,
+      'TIMEOUT' => PaymentResponseStatus.timeout,
+      'DECLINED' => PaymentResponseStatus.declined,
+      _ => PaymentResponseStatus.unknown,
     };
-    final res = await methodChannel.invokeMethod<String>('getCertificateSerialHex', args);
-    return res;
   }
 
   @override
-  Future<String?> doSignature(String data, SamSlot samSlot, String pin, int timeoutMs) async {
-    final Map<String, dynamic> args = {
-      'pin': pin,
+  Future<String?> getCertificateSerialHex(SamSlot samSlot, int timeoutMs) {
+    return methodChannel.invokeMethod<String>('getCertificateSerialHex', _sam(samSlot, timeoutMs));
+  }
+
+  @override
+  Future<String?> getCertificateSerialDec(SamSlot samSlot, int timeoutMs) {
+    return methodChannel.invokeMethod<String>('getCertificateSerialDec', _sam(samSlot, timeoutMs));
+  }
+
+  @override
+  Future<String?> getCIN(SamSlot samSlot, int timeoutMs) {
+    return methodChannel.invokeMethod<String>('getCIN', _sam(samSlot, timeoutMs));
+  }
+
+  @override
+  Future<String?> doSignature(String data, SamSlot samSlot, String pin, int timeoutMs) {
+    return methodChannel.invokeMethod<String>('doSignature', {
+      ..._sam(samSlot, timeoutMs),
       'data': data,
-      'samSlot': getSamSlot(samSlot),
-      'timeoutMs': timeoutMs,
-    };
-    final res = await methodChannel.invokeMethod<String>('doSignature', args);
-    return res;
-  }
-
-  @override
-  Future<String?> doSignatureWithoutSelection(String data, SamSlot samSlot, String pin, int timeoutMs) async {
-    final Map<String, dynamic> args = {
       'pin': pin,
+    });
+  }
+
+  @override
+  Future<String?> doSignatureWithoutSelection(String data, SamSlot samSlot, String pin, int timeoutMs) {
+    return methodChannel.invokeMethod<String>('doSignatureWithoutSelection', {
+      ..._sam(samSlot, timeoutMs),
       'data': data,
-      'samSlot': getSamSlot(samSlot),
-      'timeoutMs': timeoutMs,
-    };
-    final res = await methodChannel.invokeMethod<String>('doSignatureWithoutSelection', args);
-    return res;
+      'pin': pin,
+    });
   }
 
-  @override
-  Future<String?> getCertificateSerialDec(SamSlot samSlot, int timeoutMs) async {
-    final Map<String, dynamic> args = {
-      'samSlot': getSamSlot(samSlot),
-      'timeoutMs': timeoutMs,
-    };
-    final res = await methodChannel.invokeMethod<String>('getCertificateSerialDec', args);
-    return res;
-  }
+  Map<String, Object> _sam(SamSlot samSlot, int timeoutMs) => {
+        'samSlot': getSamSlot(samSlot),
+        'timeoutMs': timeoutMs,
+      };
 
-  @override
-  Future<String?> getCIN(SamSlot samSlot, int timeoutMs) async {
-    final Map<String, dynamic> args = {
-      'samSlot': getSamSlot(samSlot),
-      'timeoutMs': timeoutMs,
-    };
-    final res = await methodChannel.invokeMethod<String>('getCIN', args);
-    return res;
-  }
-
+  /// Printing never throws: a job that cannot start is reported as
+  /// [PrintResponse.failed].
   @override
   Future<PrintResponse> printPaper(MyPosPaper data) async {
-    final Map<String, dynamic> args = {
-      'data': data.commands
-    };
-    final res = await methodChannel.invokeMethod<String>('printPaper', args);
-    switch (res) {
-      case 'SUCCESS':
-        return PrintResponse.success;
-      case 'FAILED':
-        return PrintResponse.failed;
-      case 'OUT_OF_PAPER':
-        return PrintResponse.outOfPaper;
-      case 'UNKNOWN':
-        return PrintResponse.unknown;
-    }
-    return PrintResponse.unknown;
-  }
-
-
-  static int getSamSlot(SamSlot samSlot) {
-    switch (samSlot) {
-      case SamSlot.slot_1:
-        return 1;
-      case SamSlot.slot_2:
-        return 2;
+    try {
+      final res = await methodChannel.invokeMethod<String>('printPaper', {'data': data.commands});
+      return printResponseFrom(res);
+    } on PlatformException {
+      return PrintResponse.failed;
     }
   }
+
+  @visibleForTesting
+  static PrintResponse printResponseFrom(String? res) => switch (res) {
+        'SUCCESS' => PrintResponse.success,
+        'FAILED' => PrintResponse.failed,
+        'OUT_OF_PAPER' => PrintResponse.outOfPaper,
+        _ => PrintResponse.unknown,
+      };
+
+  static int getSamSlot(SamSlot samSlot) => switch (samSlot) {
+        SamSlot.slot_1 => 1,
+        SamSlot.slot_2 => 2,
+      };
 }

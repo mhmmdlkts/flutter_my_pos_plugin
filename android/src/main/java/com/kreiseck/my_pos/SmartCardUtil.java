@@ -1,10 +1,5 @@
 package com.kreiseck.my_pos;
 
-import java.io.ByteArrayInputStream;
-import java.security.cert.Certificate;
-import java.security.cert.CertificateFactory;
-import java.util.List;
-
 public class SmartCardUtil {
 
 	public static String byteArrayToHexString(byte[] data) {
@@ -26,9 +21,7 @@ public class SmartCardUtil {
 	}
 
 	public static byte[] getFormat1PIN(String pin) throws Exception {
-		if (pin.length() != 6 && pin.length() != 4) {
-			throw new Exception("Wrong PIN length");
-		}
+		checkPin(pin);
 		char[] ca = pin.toCharArray();
 		byte[] ba = new byte[8];
 		for (int i = 0; i < 8; i++) {
@@ -48,10 +41,7 @@ public class SmartCardUtil {
 	 * 14-N nibbles, each holding the "fill" value 15
 	 */
 	public static byte[] getFormat2PIN(String pin) throws Exception {
-
-		if (pin.length() != 6 && pin.length() != 4) {
-			throw new Exception("Wrong PIN length");
-		}
+		checkPin(pin);
 		byte[] ba = new byte[8];
 		ba[0] = (byte) ((2 << 4) | pin.length());
 		char[] ca = pin.toCharArray();
@@ -67,5 +57,17 @@ public class SmartCardUtil {
 		ba[6] = (byte) 0xFF;
 		ba[7] = (byte) 0xFF;
 		return ba;
+	}
+
+	/** The card PIN has 4 or 6 digits. */
+	private static void checkPin(String pin) throws Exception {
+		if (pin == null || (pin.length() != 6 && pin.length() != 4)) {
+			throw new Exception("Wrong PIN length");
+		}
+		for (char c : pin.toCharArray()) {
+			if (c < '0' || c > '9') {
+				throw new Exception("PIN must contain digits only");
+			}
+		}
 	}
 }

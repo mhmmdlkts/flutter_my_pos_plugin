@@ -1,3 +1,7 @@
+// Field names follow the keys of the myPOS result extras.
+// ignore_for_file: non_constant_identifier_names
+
+/// Result of [MyPos.makePayment], one field per key the terminal returns.
 class MyPosPaymentResponse {
   // --- Exact fields per myPOS "In Person Payments → Responses" ---
   final String? reference_number;          // reference_number
@@ -119,6 +123,12 @@ class MyPosPaymentResponse {
         'resp_code': resp_code,
         'expire_date': expire_date,
       };
+
+  /// True only when the terminal approved the transaction.
+  bool get isApproved => transaction_approved == true;
+
+  /// True when the payment screen was left without a transaction.
+  bool get isCancelled => status_text == 'CANCEL';
 
   @override
   String toString() {

@@ -1,74 +1,92 @@
 package com.kreiseck.my_pos;
 
-import android.app.Activity;
+import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.util.Base64;
-import android.widget.Toast;
 
 import com.google.gson.Gson;
 import com.mypos.smartsdk.MyPOSAPI;
 import com.mypos.smartsdk.MyPOSUtil;
 import com.mypos.smartsdk.print.PrinterCommand;
-import java.util.List;
+
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
-public class MyPosPrinterService {
+/** Prints on the built-in printer of myPOS Smart terminals. */
+final class MyPosPrinterService {
 
-    public static void showToast(Activity context, final String toast) {
-        context.runOnUiThread(new Runnable() {
-            public void run()
-            {
-                Toast.makeText(context, toast, Toast.LENGTH_SHORT).show();
-            }
-        });
+  private static final int DEFAULT_FONT_SIZE = 24;
+  private static final int DEFAULT_QR_SIZE = 200;
+
+  private MyPosPrinterService() {}
+
+  /** Turns the commands from Dart into the print broadcast; throws on unusable input. */
+  static Intent buildPrintIntent(List<Map<String, Object>> data) {
+    if (data == null) throw new IllegalArgumentException("data is required");
+    List<PrinterCommand> commands = new ArrayList<>();
+    for (Map<String, Object> command : data) {
+      PrinterCommand printerCommand = toPrinterCommand(command);
+      if (printerCommand != null) commands.add(printerCommand);
     }
-    protected static void printPaper(Activity context, List<Map<String, Object>> data) {
-        List<PrinterCommand> commands = new ArrayList<>();
+    Intent intent = new Intent(MyPOSUtil.PRINT_BROADCAST);
+    intent.putExtra("commands", new Gson().toJson(commands));
+    return intent;
+  }
 
-        for (Map<String, Object> commandData : data) {
-            String type = (String) commandData.get("type");
+  /** Sends the job to the myPOS system app. One explicit broadcast, so it prints once. */
+  static void send(Context context, Intent intent) {
+    MyPOSAPI.sendExplicitBroadcast(context, intent);
+  }
 
-            switch (type) {
-                case "text":
-                    String textValue = (String) commandData.get("value");
-                    int fontSize = (int) commandData.get("fontSize");
-                    PrinterCommand.Alignment alignment = PrinterCommand.Alignment.values()[(int) commandData.get("alignment")];
-                    commands.add(new PrinterCommand(PrinterCommand.CommandType.TEXT, textValue, fontSize, alignment));
-                    break;
-                case "doubleText":
-                    String leftValue = (String) commandData.get("leftValue");
-                    String rightValue = (String) commandData.get("rightValue");
-                    commands.add(new PrinterCommand(PrinterCommand.CommandType.TEXT, leftValue, rightValue, PrinterCommand.RECEIPT_SMART_MAX_CHARS_PER_LINE));
-                    break;
-                case "space":
-                    commands.add(new PrinterCommand(PrinterCommand.CommandType.TEXT, "\n"));
-                    break;
-                case "image":
-                    String base64Image = (String) commandData.get("value");
-                    byte[] imageBytes = Base64.decode(base64Image, Base64.DEFAULT);
-                    Bitmap bitmapImg = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length);
-                    commands.add(new PrinterCommand(PrinterCommand.CommandType.IMAGE, bitmapImg));
-                    break;
-                case "qrCode":
-                    int qrSize = (int) commandData.get("size");
-                    Bitmap bitmapQr = QRCodeGenerator.generateQRCode((String) commandData.get("value"), qrSize);
-                    if (bitmapQr != null) {
-                        commands.add(new PrinterCommand(PrinterCommand.CommandType.IMAGE, bitmapQr));
-                    }
-                    break;
-            }
-        }
-
-        Gson gson = new Gson();
-        String jsonCommands = gson.toJson(commands);
-        Intent intent = new Intent(MyPOSUtil.PRINT_BROADCAST);
-        intent.putExtra("commands", jsonCommands);
-        context.sendBroadcast(intent);
-        MyPOSAPI.sendExplicitBroadcast(context, intent);
+  private static PrinterCommand toPrinterCommand(Map<String, Object> command) {
+    String type = (String) command.get("type");
+    if (type == null) return null;
+    switch (type) {
+      case "text":
+        return new PrinterCommand(
+            PrinterCommand.CommandType.TEXT,
+            string(command.get("value")),
+            integer(command.get("fontSize"), DEFAULT_FONT_SIZE),
+            alignment(command.get("alignment")));
+      case "doubleText":
+        return new PrinterCommand(
+            PrinterCommand.CommandType.TEXT,
+            string(command.get("leftValue")),
+            string(command.get("rightValue")),
+            PrinterCommand.RECEIPT_SMART_MAX_CHARS_PER_LINE);
+      case "space":
+        return new PrinterCommand(PrinterCommand.CommandType.TEXT, "\n");
+      case "image": {
+        byte[] bytes = Base64.decode(string(command.get("value")), Base64.DEFAULT);
+        Bitmap bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
+        if (bitmap == null) throw new IllegalArgumentException("image is not a valid picture");
+        return new PrinterCommand(PrinterCommand.CommandType.IMAGE, bitmap);
+      }
+      case "qrCode": {
+        Bitmap qr = QRCodeGenerator.generateQRCode(
+            string(command.get("value")), integer(command.get("size"), DEFAULT_QR_SIZE));
+        if (qr == null) throw new IllegalArgumentException("QR code could not be created");
+        return new PrinterCommand(PrinterCommand.CommandType.IMAGE, qr);
+      }
+      default:
+        return null;
     }
+  }
 
+  private static String string(Object value) {
+    return value == null ? "" : value.toString();
+  }
 
+  static int integer(Object value, int fallback) {
+    return value instanceof Number ? ((Number) value).intValue() : fallback;
+  }
+
+  static PrinterCommand.Alignment alignment(Object value) {
+    PrinterCommand.Alignment[] all = PrinterCommand.Alignment.values();
+    int index = integer(value, 0);
+    return index >= 0 && index < all.length ? all[index] : all[0];
+  }
 }

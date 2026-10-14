@@ -6,8 +6,6 @@ import com.mypos.smartsdk.SAMCard;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.mypos.smartsdk.SAMCard;
-
 public abstract class AbstractCashRegisterSmartCard implements ICashRegisterSmartCard {
 	
 	protected static final byte[] MASTER_FILE = new byte[] { 0x3F, 0x00 };

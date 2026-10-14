@@ -1,356 +1,105 @@
 package com.kreiseck.my_pos;
 
-import io.flutter.embedding.engine.plugins.activity.ActivityAware;
-import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding;
+import android.app.Activity;
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
+import android.os.Build;
+import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
+import android.util.Base64;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+
+import com.mypos.smartsdk.MyPOSUtil;
+import com.mypos.smartsdk.SAMCard;
+import com.mypos.smartsdk.print.PrinterStatus;
+
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import io.flutter.embedding.engine.plugins.FlutterPlugin;
-import io.flutter.plugin.common.PluginRegistry;
+import io.flutter.embedding.engine.plugins.activity.ActivityAware;
+import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding;
 import io.flutter.plugin.common.MethodCall;
 import io.flutter.plugin.common.MethodChannel;
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler;
 import io.flutter.plugin.common.MethodChannel.Result;
-import java.util.Map;
+import io.flutter.plugin.common.PluginRegistry;
 
-import io.flutter.embedding.engine.plugins.activity.ActivityAware;
-import android.content.Intent;
-import android.widget.Toast;
-import android.app.Activity;
-
-
-import com.mypos.smartsdk.TransactionProcessingResult;
-import com.mypos.smartsdk.Currency;
-import com.mypos.smartsdk.MyPOSAPI;
-import com.mypos.smartsdk.MyPOSPayment;
-import com.mypos.smartsdk.MyPOSUtil;
-import com.mypos.smartsdk.ReferenceType;
-import com.mypos.smartsdk.TransactionProcessingResult;
-import com.mypos.smartsdk.SAMCard;
-import com.mypos.smartsdk.print.PrinterStatus;
-import android.content.Context;
-import android.content.BroadcastReceiver;
-import android.content.IntentFilter;
-
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.util.Base64;
-import java.util.UUID;
-import java.util.Map;
-import java.util.List;
-import android.os.Bundle;
-import java.util.HashMap;
-
-/** MyPosPlugin */
+/**
+ * Bridge between Flutter and the myPOS Smart / Glass SDK.
+ *
+ * One payment and one print job can run at a time. Every call is answered exactly once:
+ * a call that cannot start returns an error instead of leaving the Dart future open, and
+ * late or repeated answers from the terminal are dropped.
+ */
 public class MyPosPlugin implements FlutterPlugin, MethodCallHandler, ActivityAware, PluginRegistry.ActivityResultListener {
-  /// The MethodChannel that will the communication between Flutter and native Android
-  ///
-  /// This local reference serves to register the plugin with the Flutter Engine and unregister it
-  /// when the Flutter Engine is detached from the Activity
+
+  /** Request code of the payment activity; distinct so other plugins' results are not taken. */
+  static final int PAYMENT_REQUEST_CODE = 0x4D50;
+
+  /** A print job the terminal never reports back on is answered with UNKNOWN after this. */
+  static final long PRINT_TIMEOUT_MS = 60_000;
+
   private MethodChannel channel;
-
+  private ActivityPluginBinding activityBinding;
   private Activity activity;
-  private Result pendingResult;
+  private boolean receiverRegistered = false;
 
+  private final Handler mainHandler = new Handler(Looper.getMainLooper());
+  private ExecutorService samExecutor;
 
-  @Override
-  public void onAttachedToEngine(@NonNull FlutterPluginBinding flutterPluginBinding) {
-    channel = new MethodChannel(flutterPluginBinding.getBinaryMessenger(), "my_pos");
-    channel.setMethodCallHandler(this);
-  }
+  private Result pendingPayment;
+  private Result pendingPrint;
+  private final Runnable printTimeout = () -> finishPrint(PrintStatus.UNKNOWN);
 
-  private BroadcastReceiver myReceiver = new BroadcastReceiver() {
-
+  private final BroadcastReceiver printingDoneReceiver = new BroadcastReceiver() {
     @Override
     public void onReceive(Context context, Intent intent) {
-      boolean printing_started = intent.getBooleanExtra("printing_started", false);
-      int printer_status = intent.getIntExtra("printer_status", PrinterStatus.PRINTER_STATUS_UNKNOWN_ERROR);
-
-      // If the printing has actually started, handle the status
-      if (printing_started) {
-
-        // Handle success and errors
-        if (printer_status == PrinterStatus.PRINTER_STATUS_SUCCESS) {
-          pendingResult.success("SUCCESS");
-        } else if (printer_status == PrinterStatus.PRINTER_STATUS_OUT_OF_PAPER) {
-          pendingResult.success("OUT_OF_PAPER");
-        } else {
-          pendingResult.success("FAILED");
-        }
-        // etc.
-      } else {
-        pendingResult.success("FAILED");
-      }
+      boolean printingStarted = intent.getBooleanExtra("printing_started", false);
+      int status = intent.getIntExtra("printer_status", PrinterStatus.PRINTER_STATUS_UNKNOWN_ERROR);
+      finishPrint(PrintStatus.fromBroadcast(printingStarted, status));
     }
   };
 
-  @Override
-  public boolean onActivityResult(int requestCode, int resultCode, Intent data) {
-    if (requestCode == 1) {
-      if (resultCode == Activity.RESULT_OK) {
-        if (data == null) {
-          if (pendingResult != null) {
-            pendingResult.success("CANCEL");
-            pendingResult = null;
-          }
-          return false;
-        }
-
-        Bundle extras = data.getExtras();
-        HashMap<String, Object> resp = new HashMap<>();
-        if (extras != null) {
-          for (String key : extras.keySet()) {
-            Object value = extras.get(key);
-            // Bundle kann z. B. Parcelable enthalten -> vorsichtig sein
-            if (value != null &&
-                    (value instanceof String ||
-                            value instanceof Boolean ||
-                            value instanceof Integer ||
-                            value instanceof Long ||
-                            value instanceof Double ||
-                            value instanceof Float)) {
-              resp.put(key, value);
-            } else if (value != null) {
-              // Fallback: toString()
-              resp.put(key, value.toString());
-            }
-          }
-        }
-
-        if (pendingResult != null) {
-          pendingResult.success(resp);
-          pendingResult = null;
-        }
-        return true;
-      } else {
-        if (pendingResult != null) {
-          pendingResult.success("CANCEL");
-          pendingResult = null;
-        }
-        return false;
-      }
-    }
-    return false;
-  }
+  // --- FlutterPlugin ---
 
   @Override
-  public void onMethodCall(@NonNull MethodCall call, @NonNull Result result) {
-    if (call.method.equals("makePayment")) {
-      pendingResult = result;
-      MyPosPaymentService.startPayment(
-              activity,
-              call.argument("amount"),
-              call.argument("currency"),
-              call.argument("reference"),
-              call.argument("eReceiptReceiver"),
-              call.argument("giftCardTransaction"),
-              call.argument("fixedPinpad"),
-              call.argument("printCustomerReceipt"),
-              call.argument("printMerchantReceipt")
-      );
-      // makePayment(result);
-    } else if (call.method.equals("makeGlassPayment")) {
-      pendingResult = result;
-      MyPosGlassPaymentService.startPayment(
-            activity,
-            call.argument("amount"),
-            call.argument("currency"),
-            call.argument("reference"),
-            call.argument("eReceiptReceiver"),
-            call.argument("printCustomerReceipt"),
-            call.argument("printMerchantReceipt")
-      );
-      // makePayment(result);
-    } else if (call.method.equals("getCertificateSerialHex")) {
-      int samSlot = call.argument("samSlot");
-      int timeoutMs = call.argument("timeoutMs");
-      getCertificateSerialHex(samSlot, timeoutMs, result);
-    } else if (call.method.equals("getCertificateSerialDec")) {
-      int samSlot = call.argument("samSlot");
-      int timeoutMs = call.argument("timeoutMs");
-      getCertificateSerialDec(samSlot, timeoutMs, result);
-    } else if (call.method.equals("getCIN")) {
-      int samSlot = call.argument("samSlot");
-      int timeoutMs = call.argument("timeoutMs");
-      getCIN(samSlot, timeoutMs, result);
-    } else if (call.method.equals("doSignature")) {
-      String data = call.argument("data");
-      String pin = call.argument("pin");
-      int samSlot = call.argument("samSlot");
-      int timeoutMs = call.argument("timeoutMs");
-      doSignature(data, samSlot, pin, timeoutMs, result);
-    }  else if (call.method.equals("doSignatureWithoutSelection")) {
-      String data = call.argument("data");
-      String pin = call.argument("pin");
-      int samSlot = call.argument("samSlot");
-      int timeoutMs = call.argument("timeoutMs");
-      doSignatureWithoutSelection(data, samSlot, pin, timeoutMs, result);
-    } else if (call.method.equals("printPaper")) {
-      pendingResult = result;
-      List<Map<String, Object>> data = call.argument("data");
-      MyPosPrinterService.printPaper(activity, data);
-    } else {
-      result.notImplemented();
-    }
+  public void onAttachedToEngine(@NonNull FlutterPluginBinding binding) {
+    channel = new MethodChannel(binding.getBinaryMessenger(), "my_pos");
+    channel.setMethodCallHandler(this);
+    samExecutor = Executors.newSingleThreadExecutor();
   }
 
   @Override
   public void onDetachedFromEngine(@NonNull FlutterPluginBinding binding) {
     channel.setMethodCallHandler(null);
+    channel = null;
+    samExecutor.shutdown();
   }
 
-  private void getCertificateSerialHex(int samSlot, int timeoutMs, @NonNull Result result) {
-    Thread r = new Thread(new Runnable(){
-      @Override
-      public void run() {
-        try {
-          if (!SAMCard.detect(activity, samSlot, timeoutMs)) {
-            result.error("NO_SAM", "No SAM card detected in slot " + samSlot, null);
-            return;
-          }
-
-          ICashRegisterSmartCard card = CashRegisterSmartCardFactory.createInstance(activity, samSlot, timeoutMs);
-          String resp = card.getCertificateSerialHex();
-
-          card.close();
-          result.success(resp);
-        } catch (Exception e) {
-          e.printStackTrace();
-          result.error("ERROR_SIG", e.getMessage(), null);
-          showToast(e.getMessage());
-        }
-      }
-    });
-    r.start();
-  }
-
-  private void getCertificateSerialDec(int samSlot, int timeoutMs, @NonNull Result result) {
-    Thread r = new Thread(new Runnable(){
-      @Override
-      public void run() {
-        try {
-          if (!SAMCard.detect(activity, samSlot, timeoutMs)) {
-            result.error("NO_SAM", "No SAM card detected in slot " + samSlot, null);
-            return;
-          }
-
-          ICashRegisterSmartCard card = CashRegisterSmartCardFactory.createInstance(activity, samSlot, timeoutMs);
-          String resp = card.getCertificateSerialDec();
-
-          card.close();
-          result.success(resp);
-        } catch (Exception e) {
-          e.printStackTrace();
-          result.error("ERROR_SIG", e.getMessage(), null);
-          showToast(e.getMessage());
-        }
-      }
-    });
-    r.start();
-  }
-
-  private void getCIN(int samSlot, int timeoutMs, @NonNull Result result) {
-    Thread r = new Thread(new Runnable(){
-      @Override
-      public void run() {
-        try {
-          if (!SAMCard.detect(activity, samSlot, timeoutMs)) {
-            result.error("NO_SAM", "No SAM card detected in slot " + samSlot, null);
-            return;
-          }
-
-          ICashRegisterSmartCard card = CashRegisterSmartCardFactory.createInstance(activity, samSlot, timeoutMs);
-          String resp = card.getCIN();
-
-          card.close();
-          result.success(resp);
-        } catch (Exception e) {
-          e.printStackTrace();
-          result.error("ERROR_SIG", e.getMessage(), null);
-          showToast(e.getMessage());
-        }
-      }
-    });
-    r.start();
-  }
-
-  private void doSignature(String data, int samSlot, String pin, int timeoutMs, @NonNull Result result) {
-    Thread r = new Thread(new Runnable(){
-      @Override
-      public void run() {
-        try {
-          if (!SAMCard.detect(activity, samSlot, timeoutMs)) {
-            result.error("NO_SAM", "No SAM card detected in slot " + samSlot, null);
-            return;
-          }
-
-          ICashRegisterSmartCard card = CashRegisterSmartCardFactory.createInstance(activity, samSlot, timeoutMs);
-          byte[] hash = MessageDigest.getInstance("SHA-256").digest(data.getBytes(StandardCharsets.UTF_8));
-
-          byte[] resp = card.doSignatur(hash, pin);
-          String signatureBase64Url = Base64.getUrlEncoder().withoutPadding().encodeToString(resp);
-
-          card.close();
-          result.success(signatureBase64Url);
-        } catch (Exception e) {
-          e.printStackTrace();
-          result.error("ERROR_SIG", e.getMessage(), null);
-          showToast(e.getMessage());
-        }
-      }
-    });
-    r.start();
-  }
-
-  private void doSignatureWithoutSelection(String data, int samSlot, String pin, int timeoutMs, @NonNull Result result) {
-    Thread r = new Thread(new Runnable(){
-      @Override
-      public void run() {
-        try {
-          if (!SAMCard.detect(activity, samSlot, timeoutMs)) {
-            result.error("NO_SAM", "No SAM card detected in slot " + samSlot, null);
-            return;
-          }
-
-          ICashRegisterSmartCard card = CashRegisterSmartCardFactory.createInstance(activity, samSlot, timeoutMs);
-          byte[] hash = MessageDigest.getInstance("SHA-256").digest(data.getBytes(StandardCharsets.UTF_8));
-
-          byte[] resp = card.doSignaturWithoutSelection(hash, pin);
-          String signatureBase64Url = Base64.getUrlEncoder().withoutPadding().encodeToString(resp);
-
-          card.close();
-          result.success(signatureBase64Url);
-        } catch (Exception e) {
-          e.printStackTrace();
-          result.error("ERROR_SIG", e.getMessage(), null);
-          showToast(e.getMessage());
-        }
-      }
-    });
-    r.start();
-  }
-
-  public void showToast(final String toast) {
-    activity.runOnUiThread(new Runnable() {
-      public void run()
-      {
-        Toast.makeText(activity, toast, Toast.LENGTH_SHORT).show();
-      }
-    });
-  }
+  // --- ActivityAware ---
 
   @Override
   public void onAttachedToActivity(@NonNull ActivityPluginBinding binding) {
+    activityBinding = binding;
     activity = binding.getActivity();
     binding.addActivityResultListener(this);
-    IntentFilter filter = new IntentFilter("com.mypos.broadcast.PRINTING_DONE");
-    this.activity.registerReceiver(myReceiver, filter);
+    registerPrintReceiver();
   }
-
 
   @Override
   public void onDetachedFromActivityForConfigChanges() {
-    activity = null;
+    detachActivity();
   }
 
   @Override
@@ -360,7 +109,232 @@ public class MyPosPlugin implements FlutterPlugin, MethodCallHandler, ActivityAw
 
   @Override
   public void onDetachedFromActivity() {
-    this.activity.unregisterReceiver(myReceiver);
+    detachActivity();
+  }
+
+  private void detachActivity() {
+    unregisterPrintReceiver();
+    if (activityBinding != null) {
+      activityBinding.removeActivityResultListener(this);
+    }
+    activityBinding = null;
     activity = null;
+  }
+
+  private void registerPrintReceiver() {
+    if (activity == null || receiverRegistered) return;
+    IntentFilter filter = new IntentFilter(MyPOSUtil.PRINTING_DONE_BROADCAST);
+    // The broadcast comes from the myPOS system app, so the receiver has to be exported.
+    // Since Android 14 registering without the flag throws.
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+      activity.registerReceiver(printingDoneReceiver, filter, Context.RECEIVER_EXPORTED);
+    } else {
+      activity.registerReceiver(printingDoneReceiver, filter);
+    }
+    receiverRegistered = true;
+  }
+
+  private void unregisterPrintReceiver() {
+    if (activity == null || !receiverRegistered) return;
+    try {
+      activity.unregisterReceiver(printingDoneReceiver);
+    } catch (IllegalArgumentException ignored) {
+      // Already gone.
+    }
+    receiverRegistered = false;
+  }
+
+  // --- MethodCallHandler ---
+
+  @Override
+  public void onMethodCall(@NonNull MethodCall call, @NonNull Result result) {
+    switch (call.method) {
+      case "makePayment":
+      case "makeGlassPayment":
+        startPayment(call, result);
+        break;
+      case "printPaper":
+        startPrint(call, result);
+        break;
+      case "getCertificateSerialHex":
+      case "getCertificateSerialDec":
+      case "getCIN":
+      case "doSignature":
+      case "doSignatureWithoutSelection":
+        runSamCommand(call, result);
+        break;
+      default:
+        result.notImplemented();
+    }
+  }
+
+  // --- Payment ---
+
+  private void startPayment(@NonNull MethodCall call, @NonNull Result result) {
+    if (activity == null) {
+      result.error("NO_ACTIVITY", "A myPOS payment needs a foreground activity.", null);
+      return;
+    }
+    if (pendingPayment != null) {
+      result.error("ALREADY_ACTIVE", "A myPOS payment is already running.", null);
+      return;
+    }
+    PaymentArgs args;
+    try {
+      args = PaymentArgs.from(call);
+    } catch (IllegalArgumentException e) {
+      result.error("INVALID_ARGUMENT", e.getMessage(), null);
+      return;
+    }
+    pendingPayment = result;
+    try {
+      if (call.method.equals("makeGlassPayment")) {
+        MyPosGlassPaymentService.startPayment(activity, args, PAYMENT_REQUEST_CODE);
+      } else {
+        MyPosPaymentService.startPayment(activity, args, PAYMENT_REQUEST_CODE);
+      }
+    } catch (Exception e) {
+      pendingPayment = null;
+      result.error("PAYMENT_NOT_STARTED", String.valueOf(e.getMessage()), e.getClass().getSimpleName());
+    }
+  }
+
+  @Override
+  public boolean onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+    if (requestCode != PAYMENT_REQUEST_CODE) return false;
+    Result result = pendingPayment;
+    pendingPayment = null;
+    if (result == null) return true;
+
+    if (resultCode != Activity.RESULT_OK || data == null) {
+      result.success("CANCEL");
+    } else {
+      result.success(bundleToMap(data.getExtras()));
+    }
+    return true;
+  }
+
+  /** Copies the result extras; values the codec cannot carry are passed as text. */
+  static Map<String, Object> bundleToMap(@Nullable Bundle extras) {
+    HashMap<String, Object> map = new HashMap<>();
+    if (extras == null) return map;
+    for (String key : extras.keySet()) {
+      Object value = extras.get(key);
+      if (value == null) continue;
+      if (value instanceof String || value instanceof Boolean || value instanceof Integer
+          || value instanceof Long || value instanceof Double || value instanceof Float) {
+        map.put(key, value);
+      } else {
+        map.put(key, value.toString());
+      }
+    }
+    return map;
+  }
+
+  // --- Printing ---
+
+  private void startPrint(@NonNull MethodCall call, @NonNull Result result) {
+    if (activity == null) {
+      result.success(PrintStatus.FAILED);
+      return;
+    }
+    if (pendingPrint != null) {
+      result.error("ALREADY_ACTIVE", "A myPOS print job is already running.", null);
+      return;
+    }
+    Intent intent;
+    try {
+      List<Map<String, Object>> data = call.argument("data");
+      intent = MyPosPrinterService.buildPrintIntent(data);
+    } catch (RuntimeException e) {
+      result.error("INVALID_ARGUMENT", String.valueOf(e.getMessage()), null);
+      return;
+    }
+    pendingPrint = result;
+    mainHandler.postDelayed(printTimeout, PRINT_TIMEOUT_MS);
+    try {
+      MyPosPrinterService.send(activity, intent);
+    } catch (RuntimeException e) {
+      finishPrint(PrintStatus.FAILED);
+    }
+  }
+
+  private void finishPrint(String status) {
+    mainHandler.removeCallbacks(printTimeout);
+    Result result = pendingPrint;
+    pendingPrint = null;
+    if (result != null) result.success(status);
+  }
+
+  // --- SAM (signature card of the cash register) ---
+
+  private void runSamCommand(@NonNull MethodCall call, @NonNull Result result) {
+    if (activity == null) {
+      result.error("NO_ACTIVITY", "SAM access needs an activity.", null);
+      return;
+    }
+    final Context context = activity.getApplicationContext();
+    final String method = call.method;
+    final Integer slot = call.argument("samSlot");
+    final Integer timeout = call.argument("timeoutMs");
+    final String data = call.argument("data");
+    final String pin = call.argument("pin");
+    if (slot == null || timeout == null) {
+      result.error("INVALID_ARGUMENT", "samSlot and timeoutMs are required.", null);
+      return;
+    }
+    samExecutor.execute(() -> {
+      ICashRegisterSmartCard card = null;
+      try {
+        if (!SAMCard.detect(context, slot, timeout)) {
+          replyError(result, "NO_SAM", "No SAM card detected in slot " + slot);
+          return;
+        }
+        card = CashRegisterSmartCardFactory.createInstance(context, slot, timeout);
+        String value;
+        switch (method) {
+          case "getCertificateSerialHex":
+            value = card.getCertificateSerialHex();
+            break;
+          case "getCertificateSerialDec":
+            value = card.getCertificateSerialDec();
+            break;
+          case "getCIN":
+            value = card.getCIN();
+            break;
+          case "doSignature":
+            value = base64Url(card.doSignatur(sha256(data), pin));
+            break;
+          default:
+            value = base64Url(card.doSignaturWithoutSelection(sha256(data), pin));
+        }
+        final String answer = value;
+        mainHandler.post(() -> result.success(answer));
+      } catch (Exception e) {
+        replyError(result, "ERROR_SIG", String.valueOf(e.getMessage()));
+      } finally {
+        if (card != null) {
+          try {
+            card.close();
+          } catch (Exception ignored) {
+            // The answer is already decided.
+          }
+        }
+      }
+    });
+  }
+
+  private void replyError(Result result, String code, String message) {
+    mainHandler.post(() -> result.error(code, message, null));
+  }
+
+  private static byte[] sha256(String data) throws Exception {
+    if (data == null) throw new IllegalArgumentException("data is required");
+    return MessageDigest.getInstance("SHA-256").digest(data.getBytes(StandardCharsets.UTF_8));
+  }
+
+  /** Base64url without padding, as RKSV expects for the signature value. */
+  static String base64Url(byte[] bytes) {
+    return Base64.encodeToString(bytes, Base64.URL_SAFE | Base64.NO_PADDING | Base64.NO_WRAP);
   }
 }
