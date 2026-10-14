@@ -10,12 +10,12 @@ import com.mypos.smartsdk.ReferenceType;
 
 import java.util.UUID;
 
-/** Card payment on myPOS Smart terminals (Go 2, Pro, Carbon, Ultra ...). */
+/** Card payment on Android Smart POS terminals. */
 final class MyPosPaymentService {
 
   private MyPosPaymentService() {}
 
-  /** Opens the myPOS payment screen; throws when it cannot be opened. */
+  /** Opens the terminal's payment screen; throws when it cannot be opened. */
   static void startPayment(Activity activity, PaymentArgs args, int requestCode) throws Exception {
     MyPOSPayment payment = MyPOSPayment.builder()
         .productAmount(args.amount)
@@ -48,7 +48,7 @@ final class MyPosPaymentService {
     try {
       return Currency.valueOf(code);
     } catch (IllegalArgumentException e) {
-      throw new IllegalArgumentException("Currency not supported by myPOS: " + code);
+      throw new IllegalArgumentException("Currency not supported by the terminal: " + code);
     }
   }
 }

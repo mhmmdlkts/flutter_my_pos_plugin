@@ -4,7 +4,7 @@ import androidx.annotation.Nullable;
 
 import io.flutter.plugin.common.MethodCall;
 
-/** Arguments of a payment call, checked before the myPOS activity is opened. */
+/** Arguments of a payment call, checked before the payment screen is opened. */
 final class PaymentArgs {
 
   final double amount;

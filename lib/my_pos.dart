@@ -6,21 +6,21 @@ import 'models/my_pos_paper.dart';
 import 'models/my_pos_payment_response.dart';
 import 'my_pos_platform_interface.dart';
 
-/// Card payments, receipt printing and the signature card on myPOS Android
-/// terminals.
+/// Card payments, receipt printing and the RKSV signature card on Android
+/// Smart POS terminals.
 ///
-/// All calls need the app to run on a myPOS device (or with the myPOS Glass
+/// All calls need the app to run on a supported terminal (or with the Glass
 /// app for [makeGlassPayment]). Only one payment and one print job can run at
 /// a time; a second call while one is running fails with `ALREADY_ACTIVE`.
 class MyPos {
-  /// Starts a card payment on a myPOS Smart terminal and waits for the result.
+  /// Starts a card payment on the terminal and waits for the result.
   ///
   /// Check [MyPosPaymentResponse.isApproved] before treating the sale as paid.
   /// Without a result from the terminal the response has `status_text`
   /// `CANCEL` (screen closed) or `UNKNOWN` (result lost); in both cases check
   /// the terminal before charging again. Throws a
   /// `PlatformException` when the payment screen cannot be opened (no
-  /// activity, myPOS service missing, invalid amount or currency).
+  /// activity, payment service missing, invalid amount or currency).
   static Future<MyPosPaymentResponse> makePayment({
     required double amount,
     required MyPosCurrency currency,
@@ -43,7 +43,7 @@ class MyPos {
     );
   }
 
-  /// Starts a tap-to-pay payment through the myPOS Glass app.
+  /// Starts a tap-to-pay payment through the Glass app.
   static Future<PaymentResponseStatus> makeGlassPayment({
     required double amount,
     required MyPosCurrency currency,

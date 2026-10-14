@@ -36,7 +36,7 @@ import io.flutter.plugin.common.MethodChannel.Result;
 import io.flutter.plugin.common.PluginRegistry;
 
 /**
- * Bridge between Flutter and the myPOS Smart / Glass SDK.
+ * Bridge between Flutter and the terminal SDKs (Smart terminal and Glass tap to pay).
  *
  * One payment and one print job can run at a time. Every call is answered exactly once:
  * a call that cannot start returns an error instead of leaving the Dart future open, and
@@ -117,7 +117,7 @@ public class MyPosPlugin implements FlutterPlugin, MethodCallHandler, ActivityAw
     Result payment = pendingPayment;
     pendingPayment = null;
     if (payment != null) {
-      payment.error("RESULT_LOST", "The app was closed before the myPOS result arrived; check the payment on the terminal.", null);
+      payment.error("RESULT_LOST", "The app was closed before the payment result arrived; check the payment on the terminal.", null);
     }
     finishPrint(PrintStatus.UNKNOWN);
   }
@@ -134,7 +134,7 @@ public class MyPosPlugin implements FlutterPlugin, MethodCallHandler, ActivityAw
   private void registerPrintReceiver() {
     if (activity == null || receiverRegistered) return;
     IntentFilter filter = new IntentFilter(MyPOSUtil.PRINTING_DONE_BROADCAST);
-    // The broadcast comes from the myPOS system app, so the receiver has to be exported.
+    // The broadcast comes from the terminal's system app, so the receiver has to be exported.
     // Since Android 14 registering without the flag throws.
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
       activity.registerReceiver(printingDoneReceiver, filter, Context.RECEIVER_EXPORTED);
@@ -182,11 +182,11 @@ public class MyPosPlugin implements FlutterPlugin, MethodCallHandler, ActivityAw
 
   private void startPayment(@NonNull MethodCall call, @NonNull Result result) {
     if (activity == null) {
-      result.error("NO_ACTIVITY", "A myPOS payment needs a foreground activity.", null);
+      result.error("NO_ACTIVITY", "A payment needs a foreground activity.", null);
       return;
     }
     if (pendingPayment != null) {
-      result.error("ALREADY_ACTIVE", "A myPOS payment is already running.", null);
+      result.error("ALREADY_ACTIVE", "A payment is already running.", null);
       return;
     }
     PaymentArgs args;
@@ -221,7 +221,7 @@ public class MyPosPlugin implements FlutterPlugin, MethodCallHandler, ActivityAw
       // money moved, so callers must not retry blindly.
       result.success("CANCEL");
     } else if (data == null) {
-      // myPOS: the payment core could not hand back its result. Outcome unknown.
+      // The payment core could not hand back its result. Outcome unknown.
       result.success("UNKNOWN");
     } else {
       Map<String, Object> map;
@@ -261,7 +261,7 @@ public class MyPosPlugin implements FlutterPlugin, MethodCallHandler, ActivityAw
       return;
     }
     if (pendingPrint != null) {
-      result.error("ALREADY_ACTIVE", "A myPOS print job is already running.", null);
+      result.error("ALREADY_ACTIVE", "A print job is already running.", null);
       return;
     }
     Intent intent;
@@ -276,7 +276,7 @@ public class MyPosPlugin implements FlutterPlugin, MethodCallHandler, ActivityAw
     mainHandler.postDelayed(printTimeout, PRINT_TIMEOUT_MS);
     try {
       if (!MyPosPrinterService.send(activity, intent)) {
-        // Nobody to print: not a myPOS Smart terminal.
+        // Nobody to print: not a supported terminal.
         finishPrint(PrintStatus.FAILED);
       }
     } catch (RuntimeException e) {

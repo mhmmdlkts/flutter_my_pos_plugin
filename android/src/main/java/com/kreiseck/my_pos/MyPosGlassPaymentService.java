@@ -10,12 +10,12 @@ import com.mypos.glasssdk.ReferenceType;
 
 import java.util.UUID;
 
-/** Tap to pay on a phone with the myPOS Glass app. */
+/** Tap to pay on a phone with the Glass app. */
 final class MyPosGlassPaymentService {
 
   private MyPosGlassPaymentService() {}
 
-  /** Opens the myPOS Glass payment screen; throws when it cannot be opened. */
+  /** Opens the Glass payment screen; throws when it cannot be opened. */
   static void startPayment(Activity activity, PaymentArgs args, int requestCode) throws Exception {
     MyPOSPayment payment = MyPOSPayment.builder()
         .productAmount(args.amount)
@@ -43,7 +43,7 @@ final class MyPosGlassPaymentService {
     try {
       return Currency.valueOf(code);
     } catch (IllegalArgumentException e) {
-      throw new IllegalArgumentException("Currency not supported by myPOS Glass: " + code);
+      throw new IllegalArgumentException("Currency not supported by Glass: " + code);
     }
   }
 }

@@ -1,18 +1,37 @@
-# my_pos
+<p align="center">
+  <a href="https://kasseneck.at"><img src="doc/kreiseck_logo.png" alt="Kreiseck Software Solutions" width="260"></a>
+</p>
 
-Flutter plugin for card payments, receipt printing and the RKSV signature card on myPOS Android
-terminals. Built and maintained by [Kasseneck](https://kasseneck.at), the cloud cash register
-system for Austria, and used in production in the Kasseneck apps, for example the taxi register
-Karteck.
+<h1 align="center">my_pos</h1>
+
+<p align="center">
+  <b>Card payments, receipt printing and the RKSV signature card on Android Smart POS terminals.</b><br>
+  The terminal bridge of <a href="https://kasseneck.at">Kasseneck</a>, the cloud cash register system for Austria.
+</p>
+
+<p align="center">
+  <a href="https://pub.dev/packages/my_pos"><img src="https://img.shields.io/pub/v/my_pos?color=930C0C&label=pub" alt="pub version"></a>
+  <a href="https://pub.dev/packages/my_pos/score"><img src="https://img.shields.io/pub/points/my_pos?color=930C0C" alt="pub points"></a>
+  <img src="https://img.shields.io/badge/platform-Android-930C0C" alt="Android">
+  <img src="https://img.shields.io/badge/license-Apache--2.0-930C0C" alt="Apache-2.0 license">
+  <a href="https://kasseneck.at"><img src="https://img.shields.io/badge/by-Kasseneck-111111" alt="by Kasseneck"></a>
+</p>
+
+---
+
+`my_pos` connects a Flutter app to an Android Smart POS terminal: take a card payment, print
+the receipt on the built-in printer and sign receipts with the RKSV signature card in the
+terminal's SAM slot. It runs in production in the [Kasseneck](https://kasseneck.at) apps, for
+example the taxi register Karteck.
 
 | | |
 |---|---|
-| Card payment | Opens the terminal's payment screen and returns the full result (approval, reference number, STAN, card brand, ...) |
-| Receipt printing | Text, two-column lines, images and QR codes on the built-in printer |
-| Signature card (SAM) | Reads the certificate serial and signs data with the RKSV signature card in the SAM slot (ACOS, ACOS-ID, CardOS) |
-| Tap to pay | Payments through the myPOS Glass app |
+| 💳 Card payment | Opens the terminal's payment screen and returns the full result (approval, reference number, STAN, card brand, ...) |
+| 🧾 Receipt printing | Text, two-column lines, images and QR codes on the built-in printer |
+| 🔏 Signature card | Certificate serial and signature with the RKSV signature card in the SAM slot (ACOS, ACOS-ID, CardOS) |
+| 📱 Tap to pay | Payments through the Glass app on a phone |
 
-Android only. The app has to run on a myPOS Smart terminal (or with myPOS Glass installed).
+Android only. The app has to run on a supported terminal (or with the Glass app installed).
 
 ## Installation
 
@@ -21,8 +40,8 @@ dependencies:
   my_pos: ^0.3.1
 ```
 
-Nothing else to set up: the plugin adds the package queries for the myPOS service to the merged
-manifest. Minimum Android version is 6.0 (API 23).
+Nothing else to set up: the plugin adds the package queries for the terminal's payment service
+to the merged manifest. Minimum Android version is 6.0 (API 23).
 
 ## Card payment
 
@@ -58,7 +77,7 @@ screen was closed) does not prove that no money moved.
 | `NO_ACTIVITY` | The app is not in the foreground. |
 | `ALREADY_ACTIVE` | A payment is already running. |
 | `INVALID_ARGUMENT` | Amount is not a positive number, or the currency is missing. |
-| `PAYMENT_NOT_STARTED` | The myPOS service is missing or refused the request (unknown currency, unsupported function, ...). |
+| `PAYMENT_NOT_STARTED` | The payment service is missing or refused the request (unknown currency, unsupported function, ...). |
 | `RESULT_LOST` | The app's activity was closed for good while the payment ran. Check the terminal. |
 
 Only one payment runs at a time, and every call is answered exactly once.
@@ -80,15 +99,15 @@ final paper = MyPosPaper()
 final status = await paper.print(); // success, failed, outOfPaper or unknown
 ```
 
-Printing never throws. On a device without the myPOS print service the answer is
+Printing never throws. On a device without the print service the answer is
 `PrintResponse.failed` at once; if the terminal does not report back within 60 seconds it is
 `PrintResponse.unknown`. An image or QR code that cannot be built is left out, the rest prints.
 `paper.toString()` gives a text preview for logs and tests.
 
 ## Signature card (RKSV)
 
-Austrian cash registers sign every receipt (Registrierkassensicherheitsverordnung, RKSV). On
-myPOS terminals the signature card sits in a SAM slot:
+Austrian cash registers sign every receipt (Registrierkassensicherheitsverordnung, RKSV). On a
+Smart POS terminal the signature card sits in a SAM slot:
 
 ```dart
 import 'package:my_pos/enums/sam_slot_enum.dart';
@@ -101,11 +120,12 @@ final signature = await MyPos.doSignature(dataToBeSigned, SamSlot.slot_1, pin);
 `doSignature` hashes the data with SHA-256 before signing. Errors come as `PlatformException`
 with the code `NO_SAM` (no card in the slot) or `ERROR_SIG`.
 
-## Releasing on the myPOS AppMarket
+## Publishing to the terminal app store
 
-Apps reach myPOS terminals through the myPOS AppMarket, not Google Play. What helped us:
+Terminal apps are installed from the terminal vendor's app store, not from Google Play. What
+helped us get through the review:
 
-* Include 32-bit ARM (`armeabi-v7a`) next to `arm64-v8a`. Some terminals run a 32-bit system and
+* Ship 32-bit ARM (`armeabi-v7a`) next to `arm64-v8a`. Some terminals run a 32-bit system and
   cannot install an app with 64-bit libraries only.
   ```groovy
   defaultConfig {
@@ -113,7 +133,7 @@ Apps reach myPOS terminals through the myPOS AppMarket, not Google Play. What he
   }
   ```
 * Upload a release APK signed with APK Signature Scheme v2 and keep the same key for every
-  version. myPOS signs the approved app again for its terminals.
+  version.
 * Ask only for permissions the app needs; the review checks them.
 
 ## Example
@@ -122,12 +142,24 @@ Apps reach myPOS terminals through the myPOS AppMarket, not Google Play. What he
 
 ## About Kasseneck
 
-[Kasseneck](https://kasseneck.at) is a cloud cash register system (Registrierkasse) for
+**[Kasseneck](https://kasseneck.at)** is a cloud cash register system (Registrierkasse) for
 Austria: RKSV-compliant receipts from the browser, the phone or the card terminal, without
-extra cash register hardware. This plugin is the bridge Kasseneck uses to myPOS terminals.
+extra cash register hardware. This plugin is how Kasseneck talks to card terminals.
 
-myPOS is a trademark of its owner. This package is not affiliated with or endorsed by myPOS.
+- 🌐 Kassensystem: **[kasseneck.at](https://kasseneck.at)**
+- 🏢 Built by **[Kreiseck Software Solutions](https://kreiseck.com)**, Austria
+- 💙 If this package saves you time, a **like on [pub.dev](https://pub.dev/packages/my_pos)** helps.
+
+## Versioning
+
+Semantic versioning, see the [CHANGELOG](CHANGELOG.md).
 
 ## License
 
-MIT, see [LICENSE](LICENSE).
+Apache-2.0, see [LICENSE](LICENSE). © 2023-2026 Kreiseck Software Solutions.
+
+---
+
+<p align="center">
+  <sub>Made with care by <a href="https://kreiseck.com"><b>Kreiseck Software Solutions</b></a> for <a href="https://kasseneck.at"><b>Kasseneck</b></a> · Austria 🇦🇹</sub>
+</p>

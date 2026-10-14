@@ -27,7 +27,7 @@ class ExamplePage extends StatefulWidget {
 }
 
 class _ExamplePageState extends State<ExamplePage> {
-  String _log = 'Run this app on a myPOS Smart terminal.';
+  String _log = 'Run this app on an Android Smart POS terminal.';
   bool _busy = false;
 
   Future<void> _run(Future<String> Function() action) async {

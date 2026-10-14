@@ -16,7 +16,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-/** Prints on the built-in printer of myPOS Smart terminals. */
+/** Prints on the built-in printer of the terminal. */
 final class MyPosPrinterService {
 
   private static final int DEFAULT_FONT_SIZE = 24;
@@ -41,7 +41,7 @@ final class MyPosPrinterService {
   }
 
   /**
-   * Sends the job to the myPOS system app as explicit broadcast, as the SDK documents.
+   * Sends the job to the terminal's system app as explicit broadcast, as the SDK documents.
    * Returns false when no app on the device takes print jobs.
    */
   static boolean send(Context context, Intent intent) {
