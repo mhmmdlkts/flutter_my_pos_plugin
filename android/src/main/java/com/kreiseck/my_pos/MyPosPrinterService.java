@@ -2,6 +2,7 @@ package com.kreiseck.my_pos;
 
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.ResolveInfo;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.util.Base64;
@@ -23,7 +24,10 @@ final class MyPosPrinterService {
 
   private MyPosPrinterService() {}
 
-  /** Turns the commands from Dart into the print broadcast; throws on unusable input. */
+  /**
+   * Turns the commands from Dart into the print broadcast. An image or QR code that cannot be
+   * built is left out: a receipt without it is better than none.
+   */
   static Intent buildPrintIntent(List<Map<String, Object>> data) {
     if (data == null) throw new IllegalArgumentException("data is required");
     List<PrinterCommand> commands = new ArrayList<>();
@@ -36,9 +40,15 @@ final class MyPosPrinterService {
     return intent;
   }
 
-  /** Sends the job to the myPOS system app. One explicit broadcast, so it prints once. */
-  static void send(Context context, Intent intent) {
+  /**
+   * Sends the job to the myPOS system app as explicit broadcast, as the SDK documents.
+   * Returns false when no app on the device takes print jobs.
+   */
+  static boolean send(Context context, Intent intent) {
+    List<ResolveInfo> receivers = context.getPackageManager().queryBroadcastReceivers(intent, 0);
+    if (receivers == null || receivers.isEmpty()) return false;
     MyPOSAPI.sendExplicitBroadcast(context, intent);
+    return true;
   }
 
   private static PrinterCommand toPrinterCommand(Map<String, Object> command) {
@@ -60,16 +70,19 @@ final class MyPosPrinterService {
       case "space":
         return new PrinterCommand(PrinterCommand.CommandType.TEXT, "\n");
       case "image": {
-        byte[] bytes = Base64.decode(string(command.get("value")), Base64.DEFAULT);
+        byte[] bytes;
+        try {
+          bytes = Base64.decode(string(command.get("value")), Base64.DEFAULT);
+        } catch (IllegalArgumentException e) {
+          return null;
+        }
         Bitmap bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
-        if (bitmap == null) throw new IllegalArgumentException("image is not a valid picture");
-        return new PrinterCommand(PrinterCommand.CommandType.IMAGE, bitmap);
+        return bitmap == null ? null : new PrinterCommand(PrinterCommand.CommandType.IMAGE, bitmap);
       }
       case "qrCode": {
         Bitmap qr = QRCodeGenerator.generateQRCode(
             string(command.get("value")), integer(command.get("size"), DEFAULT_QR_SIZE));
-        if (qr == null) throw new IllegalArgumentException("QR code could not be created");
-        return new PrinterCommand(PrinterCommand.CommandType.IMAGE, qr);
+        return qr == null ? null : new PrinterCommand(PrinterCommand.CommandType.IMAGE, qr);
       }
       default:
         return null;

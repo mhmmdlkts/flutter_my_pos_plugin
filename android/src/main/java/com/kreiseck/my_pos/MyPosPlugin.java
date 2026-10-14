@@ -62,6 +62,8 @@ public class MyPosPlugin implements FlutterPlugin, MethodCallHandler, ActivityAw
   private Result pendingPrint;
   private final Runnable printTimeout = () -> finishPrint(PrintStatus.UNKNOWN);
 
+  // PRINTING_DONE carries no job id: it answers whichever job is pending. A result that arrives
+  // after its job timed out can therefore be taken for the next job.
   private final BroadcastReceiver printingDoneReceiver = new BroadcastReceiver() {
     @Override
     public void onReceive(Context context, Intent intent) {
@@ -110,6 +112,14 @@ public class MyPosPlugin implements FlutterPlugin, MethodCallHandler, ActivityAw
   @Override
   public void onDetachedFromActivity() {
     detachActivity();
+    // The activity is gone for good: its payment result can no longer arrive. The outcome is
+    // unknown (the card may have been charged), so say so instead of blocking later payments.
+    Result payment = pendingPayment;
+    pendingPayment = null;
+    if (payment != null) {
+      payment.error("RESULT_LOST", "The app was closed before the myPOS result arrived; check the payment on the terminal.", null);
+    }
+    finishPrint(PrintStatus.UNKNOWN);
   }
 
   private void detachActivity() {
@@ -206,10 +216,22 @@ public class MyPosPlugin implements FlutterPlugin, MethodCallHandler, ActivityAw
     pendingPayment = null;
     if (result == null) return true;
 
-    if (resultCode != Activity.RESULT_OK || data == null) {
+    if (resultCode != Activity.RESULT_OK) {
+      // The payment screen was closed without a result. No result does not prove that no
+      // money moved, so callers must not retry blindly.
       result.success("CANCEL");
+    } else if (data == null) {
+      // myPOS: the payment core could not hand back its result. Outcome unknown.
+      result.success("UNKNOWN");
     } else {
-      result.success(bundleToMap(data.getExtras()));
+      Map<String, Object> map;
+      try {
+        map = bundleToMap(data.getExtras());
+      } catch (RuntimeException e) {
+        result.success("UNKNOWN");
+        return true;
+      }
+      result.success(map);
     }
     return true;
   }
@@ -253,7 +275,10 @@ public class MyPosPlugin implements FlutterPlugin, MethodCallHandler, ActivityAw
     pendingPrint = result;
     mainHandler.postDelayed(printTimeout, PRINT_TIMEOUT_MS);
     try {
-      MyPosPrinterService.send(activity, intent);
+      if (!MyPosPrinterService.send(activity, intent)) {
+        // Nobody to print: not a myPOS Smart terminal.
+        finishPrint(PrintStatus.FAILED);
+      }
     } catch (RuntimeException e) {
       finishPrint(PrintStatus.FAILED);
     }

@@ -16,7 +16,9 @@ class MyPos {
   /// Starts a card payment on a myPOS Smart terminal and waits for the result.
   ///
   /// Check [MyPosPaymentResponse.isApproved] before treating the sale as paid.
-  /// A cancelled payment returns `status_text: 'CANCEL'`. Throws a
+  /// Without a result from the terminal the response has `status_text`
+  /// `CANCEL` (screen closed) or `UNKNOWN` (result lost); in both cases check
+  /// the terminal before charging again. Throws a
   /// `PlatformException` when the payment screen cannot be opened (no
   /// activity, myPOS service missing, invalid amount or currency).
   static Future<MyPosPaymentResponse> makePayment({
@@ -86,7 +88,8 @@ class MyPos {
     return MyPosPlatform.instance.doSignatureWithoutSelection(data, samSlot, pin, timeoutMs);
   }
 
-  /// Prints [data] on the built-in printer. Never throws.
+  /// Prints [data] on the built-in printer. Never throws; an image or QR code
+  /// that cannot be built is left out.
   static Future<PrintResponse> printPaper(MyPosPaper data) {
     return MyPosPlatform.instance.printPaper(data);
   }

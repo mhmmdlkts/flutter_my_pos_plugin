@@ -40,7 +40,7 @@ class MethodChannelMyPos extends MyPosPlatform {
   }
 
   /// Turns the native answer into a response: the result extras of the
-  /// payment, or a status text ("CANCEL") when the terminal returned none.
+  /// payment, or a status text (`CANCEL`, `UNKNOWN`) when there are none.
   @visibleForTesting
   static MyPosPaymentResponse paymentResponseFrom(Object? res) {
     if (res is Map) {
@@ -135,6 +135,8 @@ class MethodChannelMyPos extends MyPosPlatform {
       final res = await methodChannel.invokeMethod<String>('printPaper', {'data': data.commands});
       return printResponseFrom(res);
     } on PlatformException {
+      return PrintResponse.failed;
+    } on MissingPluginException {
       return PrintResponse.failed;
     }
   }

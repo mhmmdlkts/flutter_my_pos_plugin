@@ -127,8 +127,14 @@ class MyPosPaymentResponse {
   /// True only when the terminal approved the transaction.
   bool get isApproved => transaction_approved == true;
 
-  /// True when the payment screen was left without a transaction.
-  bool get isCancelled => status_text == 'CANCEL';
+  /// True when the payment was cancelled: on the terminal (status 1) or by
+  /// leaving the payment screen. Neither proves that no money moved; check
+  /// the terminal before charging again.
+  bool get isCancelled => status == 1 || status_text == 'CANCEL';
+
+  /// True when the terminal gave no usable result (status_text `UNKNOWN`):
+  /// the card may have been charged. Check the terminal before retrying.
+  bool get isUnknown => status_text == 'UNKNOWN';
 
   @override
   String toString() {

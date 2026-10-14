@@ -80,6 +80,21 @@ void main() {
       expect(res.isCancelled, isTrue);
     });
 
+    test('cancel on the terminal (status 1) is cancelled', () async {
+      answer = (_) => {'transaction_approved': false, 'status': 1};
+      final res = await MyPos.makePayment(amount: 1, currency: MyPosCurrency.eur);
+      expect(res.isCancelled, isTrue);
+      expect(res.isApproved, isFalse);
+    });
+
+    test('a lost result is unknown, not approved', () async {
+      answer = (_) => 'UNKNOWN';
+      final res = await MyPos.makePayment(amount: 1, currency: MyPosCurrency.eur);
+      expect(res.isUnknown, isTrue);
+      expect(res.isApproved, isFalse);
+      expect(res.isCancelled, isFalse);
+    });
+
     test('a payment that cannot start throws', () async {
       answer = (_) => throw PlatformException(code: 'PAYMENT_NOT_STARTED');
       expect(
@@ -113,6 +128,11 @@ void main() {
 
     test('never throws', () async {
       answer = (_) => throw PlatformException(code: 'ALREADY_ACTIVE');
+      expect(await MyPos.printPaper(MyPosPaper()..addText('x')), PrintResponse.failed);
+    });
+
+    test('never throws without the native plugin either', () async {
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(channel, null);
       expect(await MyPos.printPaper(MyPosPaper()..addText('x')), PrintResponse.failed);
     });
 

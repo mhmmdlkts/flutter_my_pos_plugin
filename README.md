@@ -40,12 +40,16 @@ final result = await MyPos.makePayment(
 
 if (result.isApproved) {
   // Paid. Keep result.reference_number / result.STAN for the books.
-} else if (result.isCancelled) {
-  // The customer or driver left the payment screen.
+} else if (result.isUnknown || result.isCancelled) {
+  // No approval came back. Check the terminal's transaction list
+  // before charging again: the card may still have been charged.
 } else {
   // Declined: result.response_code says why.
 }
 ```
+
+Only `isApproved` means paid. A missing result (`isUnknown`, or `isCancelled` after the payment
+screen was closed) does not prove that no money moved.
 
 `makePayment` throws a `PlatformException` only when the payment screen cannot be opened:
 
@@ -55,6 +59,7 @@ if (result.isApproved) {
 | `ALREADY_ACTIVE` | A payment is already running. |
 | `INVALID_ARGUMENT` | Amount is not a positive number, or the currency is missing. |
 | `PAYMENT_NOT_STARTED` | The myPOS service is missing or refused the request (unknown currency, unsupported function, ...). |
+| `RESULT_LOST` | The app's activity was closed for good while the payment ran. Check the terminal. |
 
 Only one payment runs at a time, and every call is answered exactly once.
 
@@ -75,8 +80,10 @@ final paper = MyPosPaper()
 final status = await paper.print(); // success, failed, outOfPaper or unknown
 ```
 
-Printing never throws. If the terminal does not report back within 60 seconds the answer is
-`PrintResponse.unknown`. `paper.toString()` gives a text preview for logs and tests.
+Printing never throws. On a device without the myPOS print service the answer is
+`PrintResponse.failed` at once; if the terminal does not report back within 60 seconds it is
+`PrintResponse.unknown`. An image or QR code that cannot be built is left out, the rest prints.
+`paper.toString()` gives a text preview for logs and tests.
 
 ## Signature card (RKSV)
 
