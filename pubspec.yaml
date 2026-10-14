@@ -1,11 +1,19 @@
 name: my_pos
-description: My Pos Plugin
-version: 0.3.0
-homepage: https://github.com/mhmmdlkts/flutter_my_pos_plugin
+description: Kasseneck's Flutter plugin for Android card terminals - card payments, receipt printing and RKSV signature cards on myPOS Smart devices.
+version: 0.3.1
+homepage: https://kasseneck.at
+repository: https://github.com/mhmmdlkts/flutter_my_pos_plugin
+issue_tracker: https://github.com/mhmmdlkts/flutter_my_pos_plugin/issues
+topics:
+  - kasseneck
+  - rksv
+  - registrierkasse
+  - payment
+  - receipt-printer
 
 environment:
   sdk: ^3.6.0
-  flutter: '>=3.3.0'
+  flutter: '>=3.27.0'
 
 dependencies:
   flutter:
