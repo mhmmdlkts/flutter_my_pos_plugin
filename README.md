@@ -37,7 +37,7 @@ Android only. The app has to run on a supported terminal (or with the Glass app 
 
 ```yaml
 dependencies:
-  my_pos: ^0.3.1
+  my_pos: ^0.3.2
 ```
 
 Nothing else to set up: the plugin adds the package queries for the terminal's payment service

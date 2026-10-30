@@ -1,3 +1,8 @@
+## 0.3.2
+
+* The signature card in the SAM slot is also recognised as ACOS-ID 4.1, the current A-Trust card
+  (ATR from A-Trust's APDU examples, 25.03.2025). Before, such a card was answered with "Wrong card".
+
 ## 0.3.1
 
 * Smart SDK 1.0.8.

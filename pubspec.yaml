@@ -2,7 +2,7 @@ name: my_pos
 description: >-
   Kasseneck's Flutter plugin for Android Smart POS terminals: card payments,
   receipt printing and the RKSV signature card (SAM) for Austrian cash registers.
-version: 0.3.1
+version: 0.3.2
 homepage: https://kasseneck.at
 documentation: https://pub.dev/documentation/my_pos/latest/
 repository: https://github.com/mhmmdlkts/flutter_my_pos_plugin
