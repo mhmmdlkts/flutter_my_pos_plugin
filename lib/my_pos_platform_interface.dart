@@ -5,7 +5,11 @@ import 'enums/my_pos_currency_enum.dart';
 import 'enums/my_pos_payment_response_status.dart';
 import 'enums/my_pos_print_response.dart';
 import 'enums/sam_slot_enum.dart';
+import 'enums/my_pos_receipts.dart';
+import 'models/my_pos_info.dart';
+import 'models/my_pos_operation_result.dart';
 import 'models/my_pos_paper.dart';
+import 'models/my_pos_void_reference.dart';
 import 'my_pos_method_channel.dart';
 
 abstract class MyPosPlatform extends PlatformInterface {
@@ -85,5 +89,37 @@ abstract class MyPosPlatform extends PlatformInterface {
   Future<PrintResponse> printPaper(MyPosPaper data) {
     throw UnimplementedError(
         'printPaper(PrinterData data) has not been implemented.');
+  }
+
+  /// Voids one card payment. See [MyPos.voidPayment].
+  Future<MyPosOperationResult> voidPayment(
+    MyPosVoidReference reference, {
+    MyPosReceipts receipts = MyPosReceipts.none,
+    bool skipConfirmation = false,
+  }) {
+    throw UnimplementedError('voidPayment() has not been implemented.');
+  }
+
+  /// Voids the last payment on this terminal. See [MyPos.voidLastPayment].
+  Future<MyPosOperationResult> voidLastPayment({
+    MyPosReceipts receipts = MyPosReceipts.none,
+    bool skipConfirmation = false,
+  }) {
+    throw UnimplementedError('voidLastPayment() has not been implemented.');
+  }
+
+  /// Refunds an amount to a card. See [MyPos.refund].
+  Future<MyPosOperationResult> refund({
+    required int amountCents,
+    required MyPosCurrency currency,
+    MyPosReceipts receipts = MyPosReceipts.none,
+    bool skipConfirmation = false,
+  }) {
+    throw UnimplementedError('refund() has not been implemented.');
+  }
+
+  /// Terminal info. See [MyPos.posInfo].
+  Future<MyPosInfo?> posInfo() {
+    throw UnimplementedError('posInfo() has not been implemented.');
   }
 }

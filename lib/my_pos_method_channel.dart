@@ -5,7 +5,11 @@ import 'enums/my_pos_currency_enum.dart';
 import 'enums/my_pos_payment_response_status.dart';
 import 'enums/my_pos_print_response.dart';
 import 'enums/sam_slot_enum.dart';
+import 'enums/my_pos_receipts.dart';
+import 'models/my_pos_info.dart';
+import 'models/my_pos_operation_result.dart';
 import 'models/my_pos_paper.dart';
+import 'models/my_pos_void_reference.dart';
 import 'models/my_pos_payment_response.dart';
 import 'my_pos_platform_interface.dart';
 
@@ -162,5 +166,72 @@ class MethodChannelMyPos extends MyPosPlatform {
   static int getSamSlot(SamSlot samSlot) => switch (samSlot) {
         SamSlot.slot_1 => 1,
         SamSlot.slot_2 => 2,
+      };
+
+  @override
+  Future<MyPosOperationResult> voidPayment(
+    MyPosVoidReference reference, {
+    MyPosReceipts receipts = MyPosReceipts.none,
+    bool skipConfirmation = false,
+  }) {
+    return _operation('voidPayment', {
+      'stan': reference.stan,
+      'authCode': reference.authCode,
+      'dateTime': reference.dateTime,
+      ..._options(receipts, skipConfirmation),
+    });
+  }
+
+  @override
+  Future<MyPosOperationResult> voidLastPayment({
+    MyPosReceipts receipts = MyPosReceipts.none,
+    bool skipConfirmation = false,
+  }) {
+    return _operation('voidLastPayment', _options(receipts, skipConfirmation));
+  }
+
+  @override
+  Future<MyPosOperationResult> refund({
+    required int amountCents,
+    required MyPosCurrency currency,
+    MyPosReceipts receipts = MyPosReceipts.none,
+    bool skipConfirmation = false,
+  }) {
+    return _operation('refund', {
+      'amountCents': amountCents,
+      'currency': currency.name,
+      ..._options(receipts, skipConfirmation),
+    });
+  }
+
+  /// Never throws: a terminal that does not answer gives `null`.
+  @override
+  Future<MyPosInfo?> posInfo() async {
+    try {
+      return MyPosInfo.fromMap(
+          await methodChannel.invokeMethod<Object?>('posInfo'));
+    } on PlatformException {
+      return null;
+    } on MissingPluginException {
+      return null;
+    }
+  }
+
+  /// Voids and refunds never throw: every outcome is a result.
+  Future<MyPosOperationResult> _operation(
+      String method, Map<String, Object?> args) async {
+    try {
+      return MyPosOperationResult.fromNative(
+          await methodChannel.invokeMethod<Object?>(method, args));
+    } catch (e) {
+      return MyPosOperationResult.fromError(e);
+    }
+  }
+
+  Map<String, Object> _options(MyPosReceipts receipts, bool skipConfirmation) =>
+      {
+        'printMerchantReceipt': receipts.printMerchant,
+        'printCustomerReceipt': receipts.printCustomer,
+        'skipConfirmation': skipConfirmation,
       };
 }

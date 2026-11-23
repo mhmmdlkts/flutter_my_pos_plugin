@@ -1,3 +1,21 @@
+## 0.4.0
+
+* Void a card payment (`MyPos.voidPayment`, by STAN, authorization code and date/time;
+  `MyPosVoidReference.tryParse` reads stored values) and the last payment on the terminal
+  (`MyPos.voidLastPayment`).
+* Refund an amount in cents to a card presented again (`MyPos.refund`).
+* Every void and refund ends in one of five results (`MyPosDone`, `MyPosDeclined`,
+  `MyPosCancelled`, `MyPosNotStarted` with a reason, `MyPosUnclear`) and never throws. Results
+  that may have moved money without a clear success are unclear: terminal status 3, 8, 10, a
+  screen closed without result, no data, or the app closed during the operation.
+* The terminal's own confirmation stays on unless `skipConfirmation: true`; receipts are off
+  unless `receipts:` asks for them.
+* Terminal info: `MyPos.posInfo()` (terminal ID, currency, merchant), `null` after 5 seconds
+  without an answer.
+* Voids and refunds use request codes of their own and never start while a payment runs.
+  Payments, printing, tap to pay and the signature card are unchanged.
+* Includes 0.3.2, which was not published.
+
 ## 0.3.2
 
 * The signature card in the SAM slot is also recognised as ACOS-ID 4.1, the current A-Trust card
