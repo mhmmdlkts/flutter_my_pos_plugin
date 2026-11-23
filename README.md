@@ -27,6 +27,8 @@ example the taxi register Karteck.
 | | |
 |---|---|
 | 💳 Card payment | Opens the terminal's payment screen and returns the full result (approval, reference number, STAN, card brand, ...) |
+| ↩️ Void and refund | Void a payment by STAN, authorization code and date/time, or refund an amount in cents to a card, with a clear outcome |
+| ℹ️ Terminal info | Terminal ID, currency and merchant as the terminal reports them |
 | 🧾 Receipt printing | Text, two-column lines, images and QR codes on the built-in printer |
 | 🔏 Signature card | Certificate serial and signature with the RKSV signature card in the SAM slot (ACOS, ACOS-ID, CardOS) |
 | 📱 Tap to pay | Payments through the Glass app on a phone |
@@ -37,7 +39,7 @@ Android only. The app has to run on a supported terminal (or with the Glass app 
 
 ```yaml
 dependencies:
-  my_pos: ^0.3.2
+  my_pos: ^0.4.0
 ```
 
 Nothing else to set up: the plugin adds the package queries for the terminal's payment service
@@ -81,6 +83,59 @@ screen was closed) does not prove that no money moved.
 | `RESULT_LOST` | The app's activity was closed for good while the payment ran. Check the terminal. |
 
 Only one payment runs at a time, and every call is answered exactly once.
+
+## Void and refund
+
+A void takes back a payment before the terminal settled it. It needs the STAN, authorization code
+and date/time from the payment result; keep them when the payment is approved.
+
+```dart
+import 'package:my_pos/models/my_pos_operation_result.dart';
+import 'package:my_pos/models/my_pos_void_reference.dart';
+import 'package:my_pos/my_pos.dart';
+
+final reference = MyPosVoidReference(
+  stan: int.parse(payment.STAN!),
+  authCode: payment.authorization_code!,
+  dateTime: payment.date_time!,
+);
+
+switch (await MyPos.voidPayment(reference)) {
+  case MyPosDone():
+    // The money is back on the card.
+  case MyPosNotStarted(reason: MyPosNotStartedReason.notFound) || MyPosDeclined():
+    // Too late for a void (usually after settlement): offer a refund,
+    // the customer presents the card again.
+    await MyPos.refund(amountCents: 1250);
+  case MyPosCancelled() || MyPosNotStarted():
+    // Nothing happened.
+  case MyPosUnclear():
+    // Not known whether money moved. Check the terminal's transaction list
+    // before doing anything; never repeat blindly.
+}
+```
+
+Every void and refund ends in one of five results, and none of them throws:
+
+| Result | Money moved? |
+|---|---|
+| `MyPosDone` | yes |
+| `MyPosDeclined` | no, the card's bank declined |
+| `MyPosCancelled` | no, cancelled on the terminal |
+| `MyPosNotStarted` | no; `reason` says why (`noActivity`, `invalidArgument`, `alreadyActive`, `notOpened`, `notFound`, `refusedByTerminal`, `notSupported`) |
+| `MyPosUnclear` | maybe: check the terminal first |
+
+The terminal shows its own confirmation unless `skipConfirmation: true`. Receipts are off unless
+`receipts:` asks for them. A refund is a new money movement: never repeat it after an unclear
+result. `MyPos.voidLastPayment()` voids whatever ran last on the terminal; use it only when no
+other payment can have run in between. One payment, void or refund runs at a time.
+
+## Terminal info
+
+```dart
+final info = await MyPos.posInfo(); // null if the terminal does not answer within 5 seconds
+print(info?.tid);
+```
 
 ## Receipt printing
 

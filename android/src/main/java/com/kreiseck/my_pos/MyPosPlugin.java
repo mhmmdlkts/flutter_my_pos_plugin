@@ -62,6 +62,9 @@ public class MyPosPlugin implements FlutterPlugin, MethodCallHandler, ActivityAw
   private Result pendingPrint;
   private final Runnable printTimeout = () -> finishPrint(PrintStatus.UNKNOWN);
 
+  // Voids, refunds and the terminal info live apart from payments and printing.
+  private final MyPosOperations operations = new MyPosOperations(new MyPosSdk(), () -> pendingPayment != null);
+
   // PRINTING_DONE carries no job id: it answers whichever job is pending. A result that arrives
   // after its job timed out can therefore be taken for the next job.
   private final BroadcastReceiver printingDoneReceiver = new BroadcastReceiver() {
@@ -96,6 +99,8 @@ public class MyPosPlugin implements FlutterPlugin, MethodCallHandler, ActivityAw
     activityBinding = binding;
     activity = binding.getActivity();
     binding.addActivityResultListener(this);
+    binding.addActivityResultListener(operations);
+    operations.attach(activity);
     registerPrintReceiver();
   }
 
@@ -120,13 +125,16 @@ public class MyPosPlugin implements FlutterPlugin, MethodCallHandler, ActivityAw
       payment.error("RESULT_LOST", "The app was closed before the payment result arrived; check the payment on the terminal.", null);
     }
     finishPrint(PrintStatus.UNKNOWN);
+    operations.activityGone();
   }
 
   private void detachActivity() {
     unregisterPrintReceiver();
     if (activityBinding != null) {
       activityBinding.removeActivityResultListener(this);
+      activityBinding.removeActivityResultListener(operations);
     }
+    operations.detach();
     activityBinding = null;
     activity = null;
   }
@@ -172,6 +180,12 @@ public class MyPosPlugin implements FlutterPlugin, MethodCallHandler, ActivityAw
       case "doSignature":
       case "doSignatureWithoutSelection":
         runSamCommand(call, result);
+        break;
+      case "voidPayment":
+      case "voidLastPayment":
+      case "refund":
+      case "posInfo":
+        operations.handle(call, result);
         break;
       default:
         result.notImplemented();

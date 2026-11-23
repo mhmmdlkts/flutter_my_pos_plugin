@@ -2,7 +2,11 @@ import 'enums/my_pos_currency_enum.dart';
 import 'enums/my_pos_payment_response_status.dart';
 import 'enums/my_pos_print_response.dart';
 import 'enums/sam_slot_enum.dart';
+import 'enums/my_pos_receipts.dart';
+import 'models/my_pos_info.dart';
+import 'models/my_pos_operation_result.dart';
 import 'models/my_pos_paper.dart';
+import 'models/my_pos_void_reference.dart';
 import 'models/my_pos_payment_response.dart';
 import 'my_pos_platform_interface.dart';
 
@@ -99,4 +103,55 @@ class MyPos {
   static Future<PrintResponse> printPaper(MyPosPaper data) {
     return MyPosPlatform.instance.printPaper(data);
   }
+
+  /// Voids one card payment on this terminal, identified by [reference]
+  /// (from the payment result: STAN, authorization code, date/time).
+  ///
+  /// The terminal shows its own confirmation unless [skipConfirmation] is
+  /// true. A void is only possible before the terminal settled the payment;
+  /// afterwards it answers [MyPosNotStarted] with
+  /// [MyPosNotStartedReason.notFound] or [MyPosDeclined] — then use [refund].
+  /// Never throws.
+  static Future<MyPosOperationResult> voidPayment(
+    MyPosVoidReference reference, {
+    MyPosReceipts receipts = MyPosReceipts.none,
+    bool skipConfirmation = false,
+  }) {
+    return MyPosPlatform.instance.voidPayment(reference,
+        receipts: receipts, skipConfirmation: skipConfirmation);
+  }
+
+  /// Voids the last payment made on this terminal, whatever it was. Only use
+  /// it when no other payment can have run in between. Never throws.
+  static Future<MyPosOperationResult> voidLastPayment({
+    MyPosReceipts receipts = MyPosReceipts.none,
+    bool skipConfirmation = false,
+  }) {
+    return MyPosPlatform.instance.voidLastPayment(
+        receipts: receipts, skipConfirmation: skipConfirmation);
+  }
+
+  /// Refunds [amountCents] to a card that the customer presents again. This
+  /// is a new money movement: never repeat it after an unclear result.
+  /// An amount of 0 or less never reaches the terminal. Never throws.
+  static Future<MyPosOperationResult> refund({
+    required int amountCents,
+    MyPosCurrency currency = MyPosCurrency.eur,
+    MyPosReceipts receipts = MyPosReceipts.none,
+    bool skipConfirmation = false,
+  }) async {
+    if (amountCents <= 0) {
+      return const MyPosNotStarted(MyPosNotStartedReason.invalidArgument,
+          statusText: 'amountCents must be positive');
+    }
+    return MyPosPlatform.instance.refund(
+        amountCents: amountCents,
+        currency: currency,
+        receipts: receipts,
+        skipConfirmation: skipConfirmation);
+  }
+
+  /// Terminal ID, currency and merchant as the terminal reports them, or
+  /// `null` when it does not answer within a few seconds. Never throws.
+  static Future<MyPosInfo?> posInfo() => MyPosPlatform.instance.posInfo();
 }
